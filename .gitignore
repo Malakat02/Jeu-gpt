@@ -1,0 +1,19 @@
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+.codex/
+.agents/
+
+# Editor and system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary files and dependencies
+node_modules/
+__pycache__/
+*.log
+*.tmp
