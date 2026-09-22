@@ -13,16 +13,24 @@ class AudioContext {
 const sandbox={Math,Map,window:{AudioContext},localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v)}};
 vm.runInNewContext(readFileSync('audio.js','utf8')+'\nglobalThis.Engine=ForestAudio;',sandbox);
 const engine=new sandbox.Engine();assert.equal(engine.context,null,'audio waits for a user gesture');engine.unlock();
-for(const effect of ['sword','hit','hurt','dash','boomerang','catch','coin','heal','treasure','relic','buy','key','door','clear','enemy','shot','warning','charge','boss','rage','win','death']){
+assert.equal(engine.music.gain.value,.62,'music is louder than the previous .45 mix');
+for(const effect of ['sword','hit','hurt','dash','boomerang','catch','coin','heal','treasure','relic','buy','key','door','clear','enemy','shot','enemyShot','enemyCharge','charge','boss','rage','win','death']){
   const before=voices.length;engine.play(effect);assert.ok(voices.length>before,`${effect} produces sound`);engine.context.currentTime++;
 }
-for(const theme of ['forest','shop','boss']){
-  const before=voices.length;for(let i=0;i<32;i++){engine.context.currentTime+=.33;engine.update(true,theme);}
+for(const theme of ['forest','shop','boss','crypt','eclipse','finalBoss']){
+  const before=voices.length;for(let i=0;i<32;i++){engine.context.currentTime+=.5;engine.update(true,theme);}
   assert.ok(voices.length>before+20,`${theme} has a musical arrangement`);
 }
+const arrangements=[];
+for(const theme of ['boss','finalBoss']){
+  const notes=[],original=engine.tone;engine.tone=(...args)=>notes.push(args.slice(0,6));
+  for(let i=0;i<32;i++){engine.context.currentTime+=.5;engine.update(true,theme);}
+  engine.tone=original;arrangements.push(notes);
+}
+assert.notDeepEqual(arrangements[0],arrangements[1],'final boss has its own melody, rhythm and accompaniment');
 engine.setEnabled(false);let before=voices.length;engine.play('sword');engine.update(true,'forest');assert.equal(voices.length,before);assert.equal(engine.master.gain.value,0);
 assert.equal(new sandbox.Engine().enabled,false,'mute preference is remembered');
 engine.setEnabled(true);engine.setPaused(true);before=voices.length;engine.play('hit');engine.update(true,'forest');assert.equal(voices.length,before);assert.equal(engine.master.gain.value,0);
 engine.setPaused(false);engine.context.currentTime++;engine.play('coin');assert.ok(voices.length>before);
 engine.update(false,'forest');assert.equal(engine.music.gain.value,0,'music stops on end screens');
-console.log('PASS: all 22 effects, three music arrangements, delayed initialization, mute preference, pause/resume and end-screen music stop.');
+console.log('PASS: 23 effects, six distinct music arrangements, louder music, delayed initialization, mute, pause and end-screen stop.');
