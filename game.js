@@ -3,7 +3,7 @@
   const $=id=>document.getElementById(id),canvas=$('game');
   const C=ForestContent,Combat=ForestCombat,soundtrack=new ForestAudio(),renderer=new ForestRenderer(canvas,$('map'));
   const keys=new Set(),TAU=Math.PI*2,rand=(a,b)=>a+Math.random()*(b-a),dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
-  let last=0,pointerHeld=false,pendingChoice=null,touchControls=null,touchDash=false;
+  let last=0,pointerHeld=false,pendingChoice=null,touchControls=null,touchDash=false,mobileView=null;
   let legacy={deaths:0,wins:0};
   try{const saved=JSON.parse(localStorage.getItem('forest-echoes'));if(saved&&Number.isFinite(saved.deaths)&&Number.isFinite(saved.wins))legacy=saved;}catch{}
   const g={mode:'title',level:0,rooms:[],room:null,player:null,particles:[],shots:[],beams:[],hazards:[],drops:[],boomerang:null,attack:null,time:0,shake:0,toastTime:0,runSeed:0,kills:0,clears:0,transition:0,neighbor,connected,dashCooldown};
@@ -15,7 +15,7 @@
   function clearInput(){touchControls?.reset();touchDash=false;keys.clear();pointerHeld=false;if(g.player){g.player.holding=false;g.player.holdTime=0;g.player.chargeSound=false;}}
   function clearRoomEffects(){g.shots=[];g.beams=[];g.hazards=[];g.boomerang=null;g.attack=null;g.particles=[];}
   function newRun(){
-    soundtrack.setPaused(false);soundtrack.unlock();clearInput();g.player=makePlayer();g.time=0;g.kills=0;g.clears=0;g.shake=0;g.runSeed=rand(0,99999);g.mode='play';pendingChoice=null;
+    mobileView?.closeMap(false);soundtrack.setPaused(false);soundtrack.unlock();clearInput();g.player=makePlayer();g.time=0;g.kills=0;g.clears=0;g.shake=0;g.runSeed=rand(0,99999);g.mode='play';pendingChoice=null;
     loadFloor(0);$('overlay').classList.add('hidden');canvas.focus();toast('Trois étages vous attendent. Retrouvez la clé de lune !');
   }
   function loadFloor(level){g.level=level;g.rooms=C.makeRooms(level);g.player.key=0;g.player.x=480;g.player.y=410;clearInput();clearRoomEffects();enter(g.rooms[0]);updateHUD();}
@@ -72,7 +72,7 @@
     $('room-status').textContent=g.room.clear?'ZONE SÛRE':'COMBAT EN COURS';$('room-status').style.color=g.room.clear?'#c8e98b':'#eb9b7c';
     $('relics').innerHTML=p.items.length?p.items.map(r=>`<div class="relic"><span>${r.icon}</span><div>${r.name}<small>${r.desc}</small></div></div>`).join(''):'<p class="empty">Les grandes légendes<br>commencent les mains vides.</p>';
     $('weapon-help').textContent=p.weapon==='master'?'Maintenir + relâcher : attaque circulaire. Vie pleine : rayon.':p.weapon==='flail'?'Le boulet inflige ses dégâts en ligne droite.':p.weapon==='greatsword'?'Grande portée, cadence modérée.':'La lame visible définit la zone de frappe.';
-    $('touch-status').innerHTML=$('health').innerHTML+`<span>◆ ${p.money} · ⚿ ${p.key}</span>`;renderer.drawMap(g);
+    $('touch-status').innerHTML=`<div class="mobile-hearts">${$('health').innerHTML}</div><span class="mobile-wallet">◆ ${p.money} rubis · ⚿ ${p.key}</span>`;renderer.drawMap(g);
   }
   function blocked(x,y,radius=12){
     const r=g.room;return x<48+radius||x>r.width-48-radius||y<64+radius||y>r.height-64-radius||r.objects.some(o=>x+radius>o.x&&x-radius<o.x+o.w&&y+radius>o.y&&y-radius<o.y+o.h);
@@ -279,6 +279,7 @@
     onRelease:()=>{if(!keys.has(' ')&&!keys.has('j')&&!pointerHeld)releaseAttack();},
     onCancel:()=>{if(g.player){g.player.holding=false;g.player.holdTime=0;g.player.chargeSound=false;}},
     onDodge:()=>{if(g.mode==='play')touchDash=true;},onBoom:throwBoom,onChange:()=>{touchDash=false;}});
+  if(document.createElement)mobileView=new ForestMobileView({onReset:clearInput,onMapOpen:()=>{if(g.mode!=='play')return false;g.mode='map';soundtrack.setPaused(true);return true;},onMapClose:()=>{if(g.mode==='map'){g.mode='play';soundtrack.setPaused(false);}}});
   g.player=makePlayer();g.rooms=C.makeRooms(0);g.room=g.rooms[0];g.room.visited=true;g.room.enemies=[];syncSoundButton();updateHUD();
   if(legacy.wins||legacy.deaths)$('legacy').textContent=`Héritage : ${Math.min(8,(legacy.deaths+legacy.wins)*2)} rubis · ${legacy.wins} victoires · ${legacy.deaths} chutes`;requestAnimationFrame(frame);
 })();

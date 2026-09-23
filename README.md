@@ -19,7 +19,7 @@ Pour un serveur local, depuis le dossier du jeu : `python -m http.server 8765 --
 | Coffre, achat, fontaine, escalier | E à proximité |
 | Pause | Échap |
 
-Le son démarre après une interaction. Le bouton **SON** coupe musique et bruitages et mémorise votre préférence. Quitter la fenêtre met le jeu en pause. Sur appareil tactile, les commandes apparaissent automatiquement : joystick analogique à gauche, grand bouton A pour attaquer ou interagir à proximité, deux boutons secondaires pour esquiver et lancer le boomerang. Maintenir puis relâcher A charge la Master Sword. Le joystick et les boutons fonctionnent simultanément. En paysage, les commandes encadrent le jeu ; en portrait, elles se placent sous la scène. Les cœurs et les rubis restent visibles au-dessus du jeu. Les commandes PC sont conservées.
+Le son démarre après une interaction. Le bouton **SON** coupe musique et bruitages et mémorise votre préférence. Quitter la fenêtre met le jeu en pause. Sur appareil tactile, les commandes apparaissent directement sur la scène : joystick à gauche, bouton A pour attaquer ou interagir et deux petits boutons pour l’esquive et le boomerang. Elles sont semi-transparentes et fonctionnent simultanément. Maintenir puis relâcher A charge la Master Sword. Les cœurs sont en haut à gauche, les rubis juste dessous. En haut à droite, **CARTE** affiche le plan et suspend la partie, **PLEIN ÉCRAN** agrandit la scène, et **Ⅱ** met en pause. Si le navigateur refuse le plein écran natif, le jeu occupe toute la fenêtre disponible. La scène conserve ses proportions sans être coupée. Les commandes PC sont conservées.
 
 ## Les trois étages
 
@@ -75,6 +75,7 @@ Six arrangements chiptune (forêt, dédale, sanctuaire, boutique, boss et thème
 - `combat.js` : géométrie partagée entre animation et collisions.
 - `game.js` : simulation, entrées, progression et récompenses.
 - `touch.js` : joystick et commandes tactiles multitouch.
+- `mobile-view.js`, `mobile.css` : commandes en surimpression, carte et plein écran mobile.
 - `renderer.js` : pixel art, salles, armes, boss et carte.
 - `audio.js` : musique, effets, pause et préférences sonores.
 
@@ -91,6 +92,7 @@ node --check audio.js
 node test-game.cjs
 node test-audio.cjs
 node test-touch.cjs
+node test-mobile-view.cjs
 ```
 
 Les tests de simulation vérifient les 38 salles, les passages et clés, les collisions des armes, les coffres et achats, les 18 reliques, chaque don, les neuf combinaisons arme/don à travers les trois étages, les deux barres de vie finales et les resets à la mort. Ils couvrent aussi les préparations silencieuses, les postures des boss, les zones d’effet et la Master Sword au repos. Les tests audio couvrent les effets, les six arrangements, la pause et la coupure du son. L’équilibrage reste ajustable après des parties jouées.
