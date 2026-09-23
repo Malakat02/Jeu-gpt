@@ -3,16 +3,16 @@
   const $=id=>document.getElementById(id),canvas=$('game');
   const C=ForestContent,Combat=ForestCombat,soundtrack=new ForestAudio(),renderer=new ForestRenderer(canvas,$('map'));
   const keys=new Set(),TAU=Math.PI*2,rand=(a,b)=>a+Math.random()*(b-a),dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
-  let last=0,pointerHeld=false,pendingChoice=null;
+  let last=0,pointerHeld=false,pendingChoice=null,touchControls=null,touchDash=false;
   let legacy={deaths:0,wins:0};
   try{const saved=JSON.parse(localStorage.getItem('forest-echoes'));if(saved&&Number.isFinite(saved.deaths)&&Number.isFinite(saved.wins))legacy=saved;}catch{}
   const g={mode:'title',level:0,rooms:[],room:null,player:null,particles:[],shots:[],beams:[],hazards:[],drops:[],boomerang:null,attack:null,time:0,shake:0,toastTime:0,runSeed:0,kills:0,clears:0,transition:0,neighbor,connected,dashCooldown};
   function sfx(name){soundtrack.play(name);}
   function syncSoundButton(){$('sound').textContent='SON : '+(soundtrack.enabled?'ON':'OFF');$('sound').title=soundtrack.enabled?'Couper musique et bruitages':'Activer musique et bruitages';}
-  function toast(message){$('toast').textContent=message;$('toast').style.opacity=1;g.toastTime=3.8;}
+  function toast(message){$('toast').textContent=touchControls?.enabled?message.replace(/\bE\b/g,'A'):message;$('toast').style.opacity=1;g.toastTime=3.8;}
   function persist(){try{localStorage.setItem('forest-echoes',JSON.stringify(legacy));}catch{}}
   function makePlayer(){return {x:480,y:410,radius:12,hp:5,max:5,money:Math.min(8,(legacy.deaths+legacy.wins)*2),key:0,damage:1,attackRate:1,power:1,weapon:'sword',boomDamage:2,boomCooldown:1.4,speed:205,dir:-Math.PI/2,inv:0,attackCD:0,dash:0,dashCD:0,dashCooldown:.85,dashDuration:.18,boomCD:0,items:[],regen:0,wisdom:false,revive:0,blessing:null,holding:false,holdTime:0,chargeSound:false};}
-  function clearInput(){keys.clear();pointerHeld=false;if(g.player){g.player.holding=false;g.player.holdTime=0;g.player.chargeSound=false;}}
+  function clearInput(){touchControls?.reset();touchDash=false;keys.clear();pointerHeld=false;if(g.player){g.player.holding=false;g.player.holdTime=0;g.player.chargeSound=false;}}
   function clearRoomEffects(){g.shots=[];g.beams=[];g.hazards=[];g.boomerang=null;g.attack=null;g.particles=[];}
   function newRun(){
     soundtrack.setPaused(false);soundtrack.unlock();clearInput();g.player=makePlayer();g.time=0;g.kills=0;g.clears=0;g.shake=0;g.runSeed=rand(0,99999);g.mode='play';pendingChoice=null;
@@ -72,7 +72,7 @@
     $('room-status').textContent=g.room.clear?'ZONE SÛRE':'COMBAT EN COURS';$('room-status').style.color=g.room.clear?'#c8e98b':'#eb9b7c';
     $('relics').innerHTML=p.items.length?p.items.map(r=>`<div class="relic"><span>${r.icon}</span><div>${r.name}<small>${r.desc}</small></div></div>`).join(''):'<p class="empty">Les grandes légendes<br>commencent les mains vides.</p>';
     $('weapon-help').textContent=p.weapon==='master'?'Maintenir + relâcher : attaque circulaire. Vie pleine : rayon.':p.weapon==='flail'?'Le boulet inflige ses dégâts en ligne droite.':p.weapon==='greatsword'?'Grande portée, cadence modérée.':'La lame visible définit la zone de frappe.';
-    renderer.drawMap(g);
+    $('touch-status').innerHTML=$('health').innerHTML+`<span>◆ ${p.money} · ⚿ ${p.key}</span>`;renderer.drawMap(g);
   }
   function blocked(x,y,radius=12){
     const r=g.room;return x<48+radius||x>r.width-48-radius||y<64+radius||y>r.height-64-radius||r.objects.some(o=>x+radius>o.x&&x-radius<o.x+o.w&&y+radius>o.y&&y-radius<o.y+o.h);
@@ -117,6 +117,14 @@
   function addRelic(relic){relic.apply(g.player);g.player.items.push(relic);sfx('relic');toast(`${relic.name} · ${relic.desc}`);updateHUD();}
   function equipWeapon(id){g.player.weapon=id;g.player.attackCD=0;g.attack=null;g.beams=[];sfx('relic');toast(`${C.weapons[id].name} équipée !`);updateHUD();}
   function grantBlessing(id){if(g.player.blessing)return;const blessing=C.blessings.find(b=>b.id===id);if(!blessing)return;blessing.apply(g.player);g.player.blessing=id;g.player.items.push(blessing);sfx('relic');toast(`${blessing.name} · actif jusqu’à la fin de cette tentative`);updateHUD();}
+  function canTouchInteract(){
+    const p=g.player,r=g.room,cx=r.width/2;if(!r.clear)return false;
+    if(r.type==='treasure')return !r.opened&&dist(p,{x:cx,y:285})<92;
+    if(r.type==='shop')return [330,480,630].some((x,i)=>!r.sold[i]&&dist(p,{x,y:350})<72);
+    if(r.type==='ante')return !r.opened&&dist(p,{x:cx,y:r.height*.4})<92;
+    if(r.type==='boss')return !r.rewardTaken?dist(p,{x:cx,y:r.height/2-35})<95:g.level<2&&dist(p,{x:cx,y:r.height*.72})<80;
+    return false;
+  }
   function interact(){
     if(g.mode!=='play'||!g.room.clear)return;const p=g.player,r=g.room,cx=r.width/2;
     if(r.type==='treasure'&&!r.opened&&dist(p,{x:cx,y:285})<92){showChoices('Un don de la forêt.','Choisissez une relique. Ses bonus se cumulent avec vos objets.',r.offer,relic=>{r.opened=true;addRelic(relic);});return;}
@@ -242,14 +250,14 @@
   function updateHint(){
     const r=g.room;let hint=r.clear?'Empruntez une porte pour explorer':'Éliminez les ennemis pour ouvrir les portes';
     if(r.type==='treasure'&&!r.opened)hint='E près du coffre · une relique au choix';if(r.type==='shop')hint='Approchez d’un article · E pour acheter';if(r.type==='ante'&&!r.opened)hint='E près de la fontaine · soin complet';if(r.type==='boss'&&r.clear)hint=r.rewardTaken?'E près de l’escalier · étage suivant':'E près du trésor du boss';
-    $('hint').textContent=hint;$('timer').textContent=`${String(Math.floor(g.time/60)).padStart(2,'0')}:${String(Math.floor(g.time%60)).padStart(2,'0')}`;
+    $('touch-action-label').textContent=canTouchInteract()?'INTERAGIR':'ATTAQUER';$('hint').textContent=touchControls?.enabled?hint.replace(/E près/g,'A près'):hint;$('timer').textContent=`${String(Math.floor(g.time/60)).padStart(2,'0')}:${String(Math.floor(g.time%60)).padStart(2,'0')}`;
   }
   function update(dt){
     if(g.mode!=='play')return;const p=g.player;g.time+=dt;g.transition=Math.max(0,g.transition-dt);
     for(const key of ['inv','attackCD','dash','dashCD','boomCD'])p[key]=Math.max(0,p[key]-dt);
     let dx=(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('q')||keys.has('a')||keys.has('arrowleft')?1:0),dy=(keys.has('s')||keys.has('arrowdown')?1:0)-(keys.has('z')||keys.has('w')||keys.has('arrowup')?1:0);
-    if(dx||dy){const length=Math.hypot(dx,dy);dx/=length;dy/=length;if(!p.dash)p.dir=Math.atan2(dy,dx);}
-    if(keys.has('shift')&&p.dashCD<=0&&(dx||dy)){p.dash=Math.min(.3,p.dashDuration);p.dashCD=dashCooldown();sfx('dash');burst(p.x,p.y,'#b6d5ac',6);}if(p.dash>0){dx=Math.cos(p.dir);dy=Math.sin(p.dir);}
+    if(!dx&&!dy&&touchControls){dx=touchControls.x;dy=touchControls.y;}if(dx||dy){const length=Math.max(1,Math.hypot(dx,dy));dx/=length;dy/=length;if(!p.dash)p.dir=Math.atan2(dy,dx);}
+    if((keys.has('shift')||touchDash)&&p.dashCD<=0&&(dx||dy||touchDash)){p.dash=Math.min(.3,p.dashDuration);p.dashCD=dashCooldown();sfx('dash');burst(p.x,p.y,'#b6d5ac',6);}touchDash=false;if(p.dash>0){dx=Math.cos(p.dir);dy=Math.sin(p.dir);}
     const speed=Math.min(340,p.speed)*(p.dash>0?3.3:g.attack?.kind==='flail'?.65:1);move(p,dx*speed*dt,dy*speed*dt);
     if(p.holding){p.holdTime+=dt;if(p.weapon==='master'){if(p.holdTime>=.7&&!p.chargeSound){p.chargeSound=true;sfx('key');}}else attack();}
     if(keys.has('k'))throwBoom();tryExit(dx,dy);updateAttack(dt);updateEnemies(dt);if(g.mode!=='play')return;updateProjectiles(dt);if(g.mode!=='play')return;resolveDeaths();collectDrops();
@@ -259,13 +267,18 @@
   function musicTheme(){return g.room.type==='boss'&&!g.room.clear?(g.level===2?'finalBoss':'boss'):g.room.type==='shop'?'shop':g.level===1?'crypt':g.level===2?'eclipse':'forest';}
   function frame(timestamp){const dt=Math.min((timestamp-last)/1000,.035);last=timestamp;soundtrack.update(g.mode==='play',musicTheme());update(dt);renderer.draw(g);requestAnimationFrame(frame);}
   document.addEventListener('keydown',event=>{const key=event.key.toLowerCase();if(['arrowup','arrowdown','arrowleft','arrowright',' ','shift'].includes(key))event.preventDefault();keys.add(key);if(event.repeat)return;if(key==='escape')pause();if(key==='e')interact();if(key==='enter'&&g.mode==='title')newRun();if(key===' '||key==='j')beginAttack();});
-  document.addEventListener('keyup',event=>{keys.delete(event.key.toLowerCase());if(!keys.has(' ')&&!keys.has('j')&&!pointerHeld)releaseAttack();});
+  document.addEventListener('keyup',event=>{keys.delete(event.key.toLowerCase());if(!keys.has(' ')&&!keys.has('j')&&!pointerHeld&&!touchControls?.active)releaseAttack();});
   function unfocus(){clearInput();if(g.mode==='play')pause();}
   window.addEventListener('blur',unfocus);document.addEventListener('visibilitychange',()=>{if(document.hidden)unfocus();});
-  canvas.addEventListener('pointerdown',event=>{if(event.button!==0)return;canvas.focus();if(g.mode!=='play')return;const bounds=canvas.getBoundingClientRect();g.player.dir=Math.atan2((event.clientY-bounds.top)*g.room.height/bounds.height-g.player.y,(event.clientX-bounds.left)*g.room.width/bounds.width-g.player.x);pointerHeld=true;beginAttack();});
-  window.addEventListener('pointerup',()=>{pointerHeld=false;if(!keys.has(' ')&&!keys.has('j'))releaseAttack();});window.addEventListener('pointercancel',()=>{pointerHeld=false;releaseAttack();});
+  canvas.addEventListener('pointerdown',event=>{if(event.pointerType==='touch'||event.button!==0)return;canvas.focus();if(g.mode!=='play')return;const bounds=canvas.getBoundingClientRect();g.player.dir=Math.atan2((event.clientY-bounds.top)*g.room.height/bounds.height-g.player.y,(event.clientX-bounds.left)*g.room.width/bounds.width-g.player.x);pointerHeld=true;beginAttack();});
+  window.addEventListener('pointerup',event=>{if(event.pointerType==='touch')return;pointerHeld=false;if(!keys.has(' ')&&!keys.has('j'))releaseAttack();});window.addEventListener('pointercancel',event=>{if(event.pointerType==='touch')return;pointerHeld=false;releaseAttack();});
   $('start').onclick=newRun;$('pause').onclick=pause;$('sound').onclick=()=>{soundtrack.setEnabled(!soundtrack.enabled);syncSoundButton();if(soundtrack.enabled)sfx('coin');};
-  $('fullscreen').onclick=()=>{const promise=document.fullscreenElement?document.exitFullscreen():$('game-wrap').requestFullscreen();promise?.catch(()=>toast('Le plein écran n’est pas disponible dans ce navigateur.'));};
+  $('fullscreen').onclick=()=>{const promise=document.fullscreenElement?document.exitFullscreen():$('game-panel').requestFullscreen?.();promise?.catch(()=>toast('Le plein écran n’est pas disponible dans ce navigateur.'));};
+  touchControls=new ForestTouch({stick:$('touch-stick'),knob:$('touch-knob'),action:$('touch-action'),dodge:$('touch-dodge'),boom:$('touch-boom'),
+    onAttack:()=>{soundtrack.unlock();if(g.mode!=='play')return;if(canTouchInteract())interact();else beginAttack();},
+    onRelease:()=>{if(!keys.has(' ')&&!keys.has('j')&&!pointerHeld)releaseAttack();},
+    onCancel:()=>{if(g.player){g.player.holding=false;g.player.holdTime=0;g.player.chargeSound=false;}},
+    onDodge:()=>{if(g.mode==='play')touchDash=true;},onBoom:throwBoom,onChange:()=>{touchDash=false;}});
   g.player=makePlayer();g.rooms=C.makeRooms(0);g.room=g.rooms[0];g.room.visited=true;g.room.enemies=[];syncSoundButton();updateHUD();
   if(legacy.wins||legacy.deaths)$('legacy').textContent=`Héritage : ${Math.min(8,(legacy.deaths+legacy.wins)*2)} rubis · ${legacy.wins} victoires · ${legacy.deaths} chutes`;requestAnimationFrame(frame);
 })();

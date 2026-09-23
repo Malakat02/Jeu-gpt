@@ -4,10 +4,10 @@ const nodes=new Map(),handlers={},choices=[0,1,2].map(i=>({dataset:{choice:Strin
 let seed=8675309;
 const seededMath=Object.create(Math);seededMath.random=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};
 const ctx=new Proxy({createRadialGradient:()=>({addColorStop(){}}),fillRect(...args){assert.ok(args.every(Number.isFinite),'render geometry is finite');}}, {get:(o,k)=>k in o?o[k]:(()=>{})});
-function node(id){if(!nodes.has(id))nodes.set(id,{style:{},classList:{add(){},remove(){}},setAttribute(k,v){this[k]=v;},getContext:()=>ctx,focus(){},addEventListener(k,fn){handlers[id+':'+k]=fn;},textContent:'',innerHTML:''});return nodes.get(id);}
-const sandbox={console,Math:seededMath,Set,Map,localStorage:{getItem:()=>null,setItem(){}},requestAnimationFrame(){},document:{getElementById:node,querySelectorAll:()=>choices,addEventListener:(k,f)=>handlers[k]=f},window:{addEventListener:(k,f)=>handlers['window:'+k]=f}};
-for(const file of ['content.js','combat.js','audio.js','renderer.js'])vm.runInNewContext(fs.readFileSync(file,'utf8'),sandbox);
-const source=fs.readFileSync('game.js','utf8').replace(/\}\)\(\);\s*$/,`globalThis.test={g,C,Combat,renderer,keys,legacy,newRun,loadFloor,enter,enemy,attack,beginAttack,releaseAttack,updateAttack,updateEnemies,updateProjectiles,resolveDeaths,collectDrops,update,interact,chooseReward,hit,hurt,pause,addRelic,equipWeapon,grantBlessing,weaponCooldown,dashCooldown,updateHUD,blocked,tryExit,throwBoom,musicTheme,soundtrack};})();`);
+function node(id){if(!nodes.has(id))nodes.set(id,{style:{},classList:{add(){},remove(){}},setAttribute(k,v){this[k]=v;},getContext:()=>ctx,setPointerCapture(){},getBoundingClientRect:()=>({left:0,top:0,width:128,height:128}),focus(){},addEventListener(k,fn){handlers[id+':'+k]=fn;},textContent:'',innerHTML:''});return nodes.get(id);}
+const sandbox={console,Math:seededMath,Set,Map,localStorage:{getItem:()=>null,setItem(){}},requestAnimationFrame(){},document:{body:node('body'),getElementById:node,querySelectorAll:()=>choices,addEventListener:(k,f)=>handlers[k]=f},window:{addEventListener:(k,f)=>handlers['window:'+k]=f}};
+for(const file of ['content.js','combat.js','audio.js','renderer.js','touch.js'])vm.runInNewContext(fs.readFileSync(file,'utf8'),sandbox);
+const source=fs.readFileSync('game.js','utf8').replace(/\}\)\(\);\s*$/,`globalThis.test={g,C,Combat,renderer,keys,legacy,newRun,loadFloor,enter,enemy,attack,beginAttack,releaseAttack,updateAttack,updateEnemies,updateProjectiles,resolveDeaths,collectDrops,update,interact,chooseReward,hit,hurt,pause,addRelic,equipWeapon,grantBlessing,weaponCooldown,dashCooldown,updateHUD,blocked,tryExit,throwBoom,musicTheme,soundtrack,touchControls,canTouchInteract};})();`);
 vm.runInNewContext(source,sandbox);
 const t=sandbox.test,g=t.g;
 function tick(n=1){for(let i=0;i<n;i++)t.update(1/60);}
@@ -140,6 +140,12 @@ for(const weapon of ['flail','greatsword','master'])for(const blessing of ['forc
 startCombat('master');t.beginAttack();tick(45);t.pause();const pausedAt=g.time;tick(90);assert.equal(g.time,pausedAt);assert.equal(g.player.holding,false);t.pause();t.releaseAttack();assert.notEqual(g.attack?.kind,'spin');
 t.newRun();t.throwBoom();tick(200);assert.equal(g.boomerang,null);
 // Anticipation is silent, and only actual shots/lunges play quiet, distinct effects.
+// Touch controls feed the actual movement/combat engine and choose interaction by distance.
+function touchEvent(id){return {pointerId:id,clientX:128,clientY:64,preventDefault(){}};}
+startCombat();const touchX=g.player.x;handlers['touch-stick:pointerdown'](touchEvent(91));tick(10);assert.ok(g.player.x>touchX);handlers['touch-action:pointerdown'](touchEvent(92));assert.ok(g.player.holding);handlers['touch-stick:pointerup'](touchEvent(91));assert.ok(g.player.holding);handlers['touch-action:pointerup'](touchEvent(92));assert.equal(g.player.holding,false);
+startCombat('master');handlers['touch-action:pointerdown'](touchEvent(93));tick(46);handlers['touch-action:pointerup'](touchEvent(93));assert.equal(g.attack.kind,'spin');
+startCombat();enterType('treasure');Object.assign(g.player,{x:480,y:285});handlers['touch-action:pointerdown'](touchEvent(94));assert.equal(g.mode,'choice');assert.equal(g.player.holding,false);t.chooseReward(0);assert.ok(g.room.opened);assert.equal(t.canTouchInteract(),false);
+startCombat();handlers['touch-dodge:pointerdown'](touchEvent(95));tick();assert.ok(g.player.dash>0,'touch dodge also works from rest');t.pause();assert.equal(t.touchControls.x,0);assert.equal(t.touchControls.active,false);
 const played=[],originalPlay=t.soundtrack.play;t.soundtrack.play=name=>played.push(name);
 startCombat();const caster=t.enemy('spitter',650,320);caster.cool=0;g.room.enemies=[caster];played.length=0;tick(20);assert.deepEqual(played,[]);tick(20);assert.ok(played.includes('enemyShot'));assert.ok(!played.includes('warning'));
 startCombat();const charger=t.enemy('knight',650,320);charger.cool=0;g.room.enemies=[charger];played.length=0;tick(30);assert.deepEqual(played,[]);tick(20);assert.ok(played.includes('enemyCharge'));t.soundtrack.play=originalPlay;
