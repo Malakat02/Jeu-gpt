@@ -3,7 +3,7 @@
   const $=id=>document.getElementById(id),canvas=$('game');
   const C=ForestContent,Combat=ForestCombat,soundtrack=new ForestAudio(),renderer=new ForestRenderer(canvas,$('map'));
   const keys=new Set(),TAU=Math.PI*2,rand=(a,b)=>a+Math.random()*(b-a),dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
-  let last=0,pointerHeld=false,pendingChoice=null,touchControls=null,touchDash=false,mobileView=null;
+  let last=0,pointerHeld=false,pendingChoice=null,touchControls=null,touchDash=false,mobileView=null,touchLayout=null,layoutPreviousMode=null;
   let legacy={deaths:0,wins:0};
   try{const saved=JSON.parse(localStorage.getItem('forest-echoes'));if(saved&&Number.isFinite(saved.deaths)&&Number.isFinite(saved.wins))legacy=saved;}catch{}
   const g={mode:'title',level:0,rooms:[],room:null,player:null,particles:[],shots:[],beams:[],hazards:[],drops:[],boomerang:null,attack:null,time:0,shake:0,toastTime:0,runSeed:0,kills:0,clears:0,transition:0,neighbor,connected,dashCooldown};
@@ -265,7 +265,7 @@
     if(g.toastTime>0){g.toastTime-=dt;if(g.toastTime<=0)$('toast').style.opacity=0;}updateHint();
   }
   function musicTheme(){return g.room.type==='boss'&&!g.room.clear?(g.level===2?'finalBoss':'boss'):g.room.type==='shop'?'shop':g.level===1?'crypt':g.level===2?'eclipse':'forest';}
-  function frame(timestamp){const dt=Math.min((timestamp-last)/1000,.035);last=timestamp;soundtrack.update(g.mode==='play',musicTheme());update(dt);renderer.draw(g);requestAnimationFrame(frame);}
+  function frame(timestamp){const dt=Math.min((timestamp-last)/1000,.035);last=timestamp;document.body.classList[g.mode==='play'?'add':'remove']('touch-playing');soundtrack.update(g.mode==='play',musicTheme());update(dt);renderer.draw(g);requestAnimationFrame(frame);}
   document.addEventListener('keydown',event=>{const key=event.key.toLowerCase();if(['arrowup','arrowdown','arrowleft','arrowright',' ','shift'].includes(key))event.preventDefault();keys.add(key);if(event.repeat)return;if(key==='escape')pause();if(key==='e')interact();if(key==='enter'&&g.mode==='title')newRun();if(key===' '||key==='j')beginAttack();});
   document.addEventListener('keyup',event=>{keys.delete(event.key.toLowerCase());if(!keys.has(' ')&&!keys.has('j')&&!pointerHeld&&!touchControls?.active)releaseAttack();});
   function unfocus(){clearInput();if(g.mode==='play')pause();}
@@ -274,12 +274,13 @@
   window.addEventListener('pointerup',event=>{if(event.pointerType==='touch')return;pointerHeld=false;if(!keys.has(' ')&&!keys.has('j'))releaseAttack();});window.addEventListener('pointercancel',event=>{if(event.pointerType==='touch')return;pointerHeld=false;releaseAttack();});
   $('start').onclick=newRun;$('pause').onclick=pause;$('sound').onclick=()=>{soundtrack.setEnabled(!soundtrack.enabled);syncSoundButton();if(soundtrack.enabled)sfx('coin');};
   $('fullscreen').onclick=()=>{const promise=document.fullscreenElement?document.exitFullscreen():$('game-panel').requestFullscreen?.();promise?.catch(()=>toast('Le plein écran n’est pas disponible dans ce navigateur.'));};
-  touchControls=new ForestTouch({stick:$('touch-stick'),knob:$('touch-knob'),action:$('touch-action'),dodge:$('touch-dodge'),boom:$('touch-boom'),
+  touchControls=new ForestTouch({stick:$('touch-stick'),knob:$('touch-knob'),action:$('touch-action'),dodge:$('touch-dodge'),boom:$('touch-boom'),canMove:()=>g.mode==='play',isEditing:()=>!!touchLayout?.editing,
     onAttack:()=>{soundtrack.unlock();if(g.mode!=='play')return;if(canTouchInteract())interact();else beginAttack();},
     onRelease:()=>{if(!keys.has(' ')&&!keys.has('j')&&!pointerHeld)releaseAttack();},
     onCancel:()=>{if(g.player){g.player.holding=false;g.player.holdTime=0;g.player.chargeSound=false;}},
     onDodge:()=>{if(g.mode==='play')touchDash=true;},onBoom:throwBoom,onChange:()=>{touchDash=false;}});
   if(document.createElement)mobileView=new ForestMobileView({onReset:clearInput,onMapOpen:()=>{if(g.mode!=='play')return false;g.mode='map';soundtrack.setPaused(true);return true;},onMapClose:()=>{if(g.mode==='map'){g.mode='play';soundtrack.setPaused(false);}}});
+  if(document.createElement)touchLayout=new ForestTouchLayout({onReset:clearInput,onOpen:()=>{if(!['play','pause','title','dead','win'].includes(g.mode))return false;layoutPreviousMode=g.mode;g.mode='layout';soundtrack.setPaused(true);return true;},onClose:()=>{g.mode=layoutPreviousMode;layoutPreviousMode=null;soundtrack.setPaused(g.mode!=='play');}});
   g.player=makePlayer();g.rooms=C.makeRooms(0);g.room=g.rooms[0];g.room.visited=true;g.room.enemies=[];syncSoundButton();updateHUD();
   if(legacy.wins||legacy.deaths)$('legacy').textContent=`Héritage : ${Math.min(8,(legacy.deaths+legacy.wins)*2)} rubis · ${legacy.wins} victoires · ${legacy.deaths} chutes`;requestAnimationFrame(frame);
 })();

@@ -141,8 +141,8 @@ startCombat('master');t.beginAttack();tick(45);t.pause();const pausedAt=g.time;t
 t.newRun();t.throwBoom();tick(200);assert.equal(g.boomerang,null);
 // Anticipation is silent, and only actual shots/lunges play quiet, distinct effects.
 // Touch controls feed the actual movement/combat engine and choose interaction by distance.
-function touchEvent(id){return {pointerId:id,clientX:128,clientY:64,preventDefault(){}};}
-startCombat();const touchX=g.player.x;handlers['touch-stick:pointerdown'](touchEvent(91));tick(10);assert.ok(g.player.x>touchX);handlers['touch-action:pointerdown'](touchEvent(92));assert.ok(g.player.holding);handlers['touch-stick:pointerup'](touchEvent(91));assert.ok(g.player.holding);handlers['touch-action:pointerup'](touchEvent(92));assert.equal(g.player.holding,false);
+function touchEvent(id){return {pointerId:id,pointerType:'touch',clientX:128,clientY:64,preventDefault(){}};}
+startCombat();const touchX=g.player.x;handlers.pointerdown(touchEvent(91));tick(2);assert.equal(g.player.x,touchX,'floating touch starts neutral');handlers['touch-stick:pointermove']({...touchEvent(91),clientX:200});tick(10);assert.ok(g.player.x>touchX);handlers['touch-action:pointerdown'](touchEvent(92));assert.ok(g.player.holding);handlers['touch-stick:pointerup'](touchEvent(91));assert.ok(g.player.holding);handlers['touch-action:pointerup'](touchEvent(92));assert.equal(g.player.holding,false);
 startCombat('master');handlers['touch-action:pointerdown'](touchEvent(93));tick(46);handlers['touch-action:pointerup'](touchEvent(93));assert.equal(g.attack.kind,'spin');
 startCombat();enterType('treasure');Object.assign(g.player,{x:480,y:285});handlers['touch-action:pointerdown'](touchEvent(94));assert.equal(g.mode,'choice');assert.equal(g.player.holding,false);t.chooseReward(0);assert.ok(g.room.opened);assert.equal(t.canTouchInteract(),false);
 startCombat();handlers['touch-dodge:pointerdown'](touchEvent(95));tick();assert.ok(g.player.dash>0,'touch dodge also works from rest');t.pause();assert.equal(t.touchControls.x,0);assert.equal(t.touchControls.active,false);
