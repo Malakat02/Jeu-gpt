@@ -23,6 +23,10 @@ Le son démarre après une interaction. Le bouton **SON** coupe musique et bruit
 
 ## Les trois étages
 
+Sur mobile, le joystick est flottant : posez le doigt sur une zone libre de l’écran, y compris les bordures, puis déplacez-le. Le point de contact devient le centre neutre. Relâcher le doigt arrête le déplacement.
+
+Pour déplacer les boutons, ouvrez **Pause → Position des boutons**, ou touchez **⚙** dans la bordure supérieure droite lorsqu’elle est disponible. Glissez chaque bouton, puis choisissez **Terminé**. Les positions sont mémorisées dans le navigateur, séparément pour le portrait et le paysage. **Par défaut** rétablit la disposition initiale. Aucun bandeau inférieur ne réduit la scène ou bloque le joystick.
+
 1. **Les racines anciennes — 12 salles.** Le plan du premier étage est conservé : combats, trésor, boutique, clé au nord-ouest, fontaine et Morne-Racine au nord-est. Ce premier gardien conserve ses 54 PV, ses projectiles lents et sa charge annoncée.
 2. **Le dédale des ombres — 23 salles.** Ambiance sombre, lanternes bleues, passages explicitement reliés, boucles et impasses. Trois trésors, une boutique, deux fontaines et une nouvelle clé. Le Veilleur des ombres possède 120 PV, des attaques plus rapides et des zones dangereuses annoncées au sol.
 3. **Le sanctuaire de l’éclipse — exactement 3 salles.** Une entrée, une grande fontaine de fée qui soigne entièrement, puis une arène de 1440 × 960 (contre 960 × 640 pour les salles habituelles). Voragh est un boss géant à deux phases : **180 PV**, puis une **nouvelle barre complète de 220 PV**. Aucune clé n’est nécessaire à cet étage.
@@ -75,6 +79,7 @@ Six arrangements chiptune (forêt, dédale, sanctuaire, boutique, boss et thème
 - `combat.js` : géométrie partagée entre animation et collisions.
 - `game.js` : simulation, entrées, progression et récompenses.
 - `touch.js` : joystick et commandes tactiles multitouch.
+- `touch-layout.js` : déplacement et mémorisation des boutons tactiles.
 - `mobile-view.js`, `mobile.css` : commandes en surimpression, carte et plein écran mobile.
 - `renderer.js` : pixel art, salles, armes, boss et carte.
 - `audio.js` : musique, effets, pause et préférences sonores.
@@ -93,6 +98,7 @@ node test-game.cjs
 node test-audio.cjs
 node test-touch.cjs
 node test-mobile-view.cjs
+node test-touch-layout.cjs
 ```
 
 Les tests de simulation vérifient les 38 salles, les passages et clés, les collisions des armes, les coffres et achats, les 18 reliques, chaque don, les neuf combinaisons arme/don à travers les trois étages, les deux barres de vie finales et les resets à la mort. Ils couvrent aussi les préparations silencieuses, les postures des boss, les zones d’effet et la Master Sword au repos. Les tests audio couvrent les effets, les six arrangements, la pause et la coupure du son. L’équilibrage reste ajustable après des parties jouées.

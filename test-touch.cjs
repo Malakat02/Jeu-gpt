@@ -16,3 +16,4 @@ stick.fire('pointerdown',6,65,65);assert.equal(c.x,0,'dead zone prevents drift')
 action.fire('pointerdown',7);events.resize();assert.equal(c.x,0);assert.equal(c.y,0);assert.equal(c.active,false);assert.equal(c.buttons.size,0);assert.equal(c.stickId,null);
 console.log('PASS: multitouch movement/attack/dodge/boomerang, analog dead zone, pointer ownership, cancellation and rotation reset.');
 stick.fire('pointerdown',8,1,2);assert.equal(c.x,0);assert.equal(c.origin.x,1,'origin is allowed at the screen edge');assert.equal(stick.style.left,'-63px');stick.fire('pointermove',8,1,50);assert.equal(c.y,1);stick.fire('pointercancel',8);assert.equal(c.x,0);assert.equal(c.y,0);
+stick.fire('pointerdown',9,8,719);assert.equal(c.origin.y,719,'bottom edge remains available as neutral point');stick.fire('pointermove',9,8,660);assert.equal(c.y,-1);stick.fire('pointerup',9);assert.equal(c.y,0);

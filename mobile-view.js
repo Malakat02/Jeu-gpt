@@ -16,7 +16,7 @@ class ForestMobileView {
     document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(this.mapOpen)this.closeMap();else if(this.immersive&&!document.fullscreenElement)this.setImmersive(false);}});
   }
   closeMap(resume=true){if(!this.mapOpen)return;this.mapOpen=false;this.mapPanel.hidden=true;this.panel.classList.remove('map-open');document.getElementById('mobile-map-toggle').setAttribute('aria-expanded','false');this.onReset();if(resume)this.onMapClose();}
-  setImmersive(value){this.immersive=value;document.body.classList[value?'add':'remove']('immersive-game');this.onReset();const button=document.getElementById('mobile-fullscreen');button.innerHTML=value?'⤢ <small>QUITTER</small>':'⛶ <small>PLEIN ÉCRAN</small>';button.setAttribute('aria-label',value?'Quitter le plein écran':'Activer le plein écran');}
+  setImmersive(value){this.immersive=value;document.body.classList[value?'add':'remove']('immersive-game');this.onReset();const button=document.getElementById('mobile-fullscreen');button.innerHTML=value?'⤢ <small>QUITTER</small>':'⛶ <small>PLEIN ÉCRAN</small>';button.setAttribute('aria-label',value?'Quitter le plein écran':'Activer le plein écran');this.onViewport?.();}
   async toggleFullscreen(){
     if(this.immersive||document.fullscreenElement){if(document.fullscreenElement)try{await document.exitFullscreen();}catch{}this.setImmersive(false);return;}
     // Fixed viewport mode remains usable on mobile browsers without Fullscreen API.

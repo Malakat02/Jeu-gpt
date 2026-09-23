@@ -149,7 +149,7 @@
     $('overlay').classList.remove('hidden');$('again').onclick=newRun;soundtrack.update(false,'');sfx(win?'win':'death');
   }
   function pause(){
-    if(g.mode==='play'){g.mode='pause';soundtrack.setPaused(true);clearInput();$('overlay').innerHTML='<div class="intro-symbol">Ⅱ</div><div class="eyebrow">LE TEMPS SUSPEND SON VOL</div><h2>Un instant de répit.</h2><p>Votre aventure vous attend.</p><button class="primary" id="resume">REPRENDRE →</button>';$('overlay').classList.remove('hidden');$('resume').onclick=pause;}
+    if(g.mode==='play'){g.mode='pause';soundtrack.setPaused(true);clearInput();$('overlay').innerHTML='<div class="intro-symbol">Ⅱ</div><div class="eyebrow">LE TEMPS SUSPEND SON VOL</div><h2>Un instant de répit.</h2><p>Votre aventure vous attend.</p><button class="primary" id="resume">REPRENDRE →</button><button class="mobile-layout-pause" id="pause-layout">⚙ Position des boutons</button>';$('overlay').classList.remove('hidden');$('resume').onclick=pause;$('pause-layout').onclick=()=>touchLayout?.open();}
     else if(g.mode==='pause'){g.mode='play';soundtrack.setPaused(false);soundtrack.unlock();$('overlay').classList.add('hidden');canvas.focus();}
   }
   function projectile(e,angle,speed=150){sfx('enemyShot');g.shots.push({x:e.x,y:e.y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,radius:6,life:6});}
@@ -281,6 +281,7 @@
     onDodge:()=>{if(g.mode==='play')touchDash=true;},onBoom:throwBoom,onChange:()=>{touchDash=false;}});
   if(document.createElement)mobileView=new ForestMobileView({onReset:clearInput,onMapOpen:()=>{if(g.mode!=='play')return false;g.mode='map';soundtrack.setPaused(true);return true;},onMapClose:()=>{if(g.mode==='map'){g.mode='play';soundtrack.setPaused(false);}}});
   if(document.createElement)touchLayout=new ForestTouchLayout({onReset:clearInput,onOpen:()=>{if(!['play','pause','title','dead','win'].includes(g.mode))return false;layoutPreviousMode=g.mode;g.mode='layout';soundtrack.setPaused(true);return true;},onClose:()=>{g.mode=layoutPreviousMode;layoutPreviousMode=null;soundtrack.setPaused(g.mode!=='play');}});
+  if(mobileView)mobileView.onViewport=()=>touchLayout?.apply();
   g.player=makePlayer();g.rooms=C.makeRooms(0);g.room=g.rooms[0];g.room.visited=true;g.room.enemies=[];syncSoundButton();updateHUD();
   if(legacy.wins||legacy.deaths)$('legacy').textContent=`Héritage : ${Math.min(8,(legacy.deaths+legacy.wins)*2)} rubis · ${legacy.wins} victoires · ${legacy.deaths} chutes`;requestAnimationFrame(frame);
 })();
