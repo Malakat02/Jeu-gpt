@@ -156,7 +156,11 @@ startCombat();g.room.enemies=[{...t.enemy('boss',500,200),action:'charge',windup
 g.hazards=[{x:300,y:300,radius:55,delay:.9,life:.35}];t.renderer.warnings(g);assert.equal(arcs,1);
 for(const kit of kits){const poses=kit.map(action=>JSON.stringify(t.renderer.bossPose({action,windup:.2,windupMax:1,aim:.2})));assert.equal(new Set(poses).size,3,'each boss attack uses a distinct pose');}
 const drawn=[],savedRect=t.renderer.rect;t.renderer.rect=(...args)=>drawn.push(args);
-startCombat('master');t.renderer.drawWeapon(g);assert.ok(drawn.some(r=>r[4]==='#bff9ee'&&r[2]>=39),'Master Sword blade remains visible at rest');assert.ok(drawn.some(r=>r[4]==='#8e82d7'),'purple guard is visible at rest');t.renderer.rect=savedRect;
+startCombat('master');t.renderer.drawWeapon(g);assert.ok(drawn.some(r=>r[0]>=50&&r[4]==='#e1fff5'),'Master Sword tip remains visible at rest');assert.ok(drawn.some(r=>r[4]==='#7164a4'),'purple guard is visible at rest');t.renderer.rect=savedRect;
+// Walking follows actual displacement, and stops against scenery or at rest.
+startCombat();press('d',8);assert.ok(g.player.moving&&g.player.walkCycle>0);const gait=g.player.walkCycle;tick();assert.equal(g.player.moving,false);assert.equal(g.player.walkCycle,gait);
+g.room.objects=[{x:g.player.x+12,y:g.player.y-30,w:50,h:60}];press('d',4);assert.equal(g.player.moving,false);assert.equal(g.player.walkCycle,gait);
+for(const weapon of ['sword','master','greatsword','flail'])for(const dir of [0,Math.PI/2,Math.PI,-Math.PI/2]){startCombat(weapon);g.player.dir=dir;t.renderer.draw(g);t.attack();tick(4);t.renderer.draw(g);}
 console.log('PASS: quiet anticipation, distinct launch sounds and boss poses, preserved AOE warnings, final boss music routing and idle Master Sword.');
 console.log('PASS: 38 connected rooms, labyrinth walls, spawn safety, rendering, keys, fountains, economy and treasure persistence.');
 console.log('PASS: visible blade collision, large sword reach, linear flail, obstacles, charged spin and full-health rays.');

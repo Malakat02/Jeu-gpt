@@ -4,6 +4,8 @@ Un roguelite d’action en pixel art, inspiré des donjons de Zelda et des comba
 
 ## Jouer
 
+Le héros possède des vues de face, de dos et de profil, une marche synchronisée avec ses déplacements, une posture d’esquive et des mains qui suivent ses armes. Les épées ont des pointes effilées ; la lame de la divinité entrelace deux brins bleu et vert. Ces animations conservent la cadence et la portée des attaques.
+
 Ouvrir **index.html** dans un navigateur récent sur ordinateur. Aucune installation ni compilation. Les polices facultatives utilisent une connexion Internet ; le jeu reste fonctionnel hors ligne.
 
 Pour un serveur local, depuis le dossier du jeu : `python -m http.server 8765 --bind 127.0.0.1`, puis ouvrir `http://127.0.0.1:8765/`.

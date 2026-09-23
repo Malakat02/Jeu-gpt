@@ -258,7 +258,9 @@
     let dx=(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('q')||keys.has('a')||keys.has('arrowleft')?1:0),dy=(keys.has('s')||keys.has('arrowdown')?1:0)-(keys.has('z')||keys.has('w')||keys.has('arrowup')?1:0);
     if(!dx&&!dy&&touchControls){dx=touchControls.x;dy=touchControls.y;}if(dx||dy){const length=Math.max(1,Math.hypot(dx,dy));dx/=length;dy/=length;if(!p.dash)p.dir=Math.atan2(dy,dx);}
     if((keys.has('shift')||touchDash)&&p.dashCD<=0&&(dx||dy||touchDash)){p.dash=Math.min(.3,p.dashDuration);p.dashCD=dashCooldown();sfx('dash');burst(p.x,p.y,'#b6d5ac',6);}touchDash=false;if(p.dash>0){dx=Math.cos(p.dir);dy=Math.sin(p.dir);}
-    const speed=Math.min(340,p.speed)*(p.dash>0?3.3:g.attack?.kind==='flail'?.65:1);move(p,dx*speed*dt,dy*speed*dt);
+    const speed=Math.min(340,p.speed)*(p.dash>0?3.3:g.attack?.kind==='flail'?.65:1),oldX=p.x,oldY=p.y;move(p,dx*speed*dt,dy*speed*dt);
+    // Distance-driven footfalls stay planted when pushing against a wall.
+    const travelled=Math.hypot(p.x-oldX,p.y-oldY);p.moving=travelled>.05;p.walkCycle=(p.walkCycle||0)+travelled/9;
     if(p.holding){p.holdTime+=dt;if(p.weapon==='master'){if(p.holdTime>=.7&&!p.chargeSound){p.chargeSound=true;sfx('key');}}else attack();}
     if(keys.has('k'))throwBoom();tryExit(dx,dy);updateAttack(dt);updateEnemies(dt);if(g.mode!=='play')return;updateProjectiles(dt);if(g.mode!=='play')return;resolveDeaths();collectDrops();
     for(const particle of g.particles){particle.x+=particle.vx*dt;particle.y+=particle.vy*dt;particle.life-=dt;}g.particles=g.particles.filter(p=>p.life>0);g.shake=Math.max(0,g.shake-dt*35);

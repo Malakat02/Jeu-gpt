@@ -137,20 +137,93 @@ class ForestRenderer {
       }
     }
   }
+  hero(g){
+    const {player:p,attack:a}=g,c=this.ctx;
+    const facing=a?.kind==='spin'?ForestCombat.pose(a,p).angle:a?a.dir:p.dir,back=Math.sin(facing)<-.55,side=Math.abs(Math.cos(facing))>.72;
+    const step=p.moving&&!p.dash?Math.sin(p.walkCycle||0):0,bob=Math.round(Math.abs(step)),sign=Math.cos(facing)<0?-1:1;
+    c.save();c.translate(Math.round(p.x),Math.round(p.y));
+    // Separate boots, tunic, arms and head give a small sprite readable weight.
+    for(const s of [-1,1]){
+      const foot=Math.round(step*s*3),x=s<0?-10:3;
+      this.rect(x,-1,7,12+foot,'#182c27');this.rect(x+2,0,4,8+foot,'#ded4a4');
+      this.rect(x-1,8+foot,9,7,'#392f29');this.rect(x,8+foot,6,3,'#916841');this.rect(x-1,14+foot,9,2,'#152722');
+    }
+    const effort=a?Math.sin(Math.min(1,a.age/a.duration)*Math.PI):0;
+    c.translate(p.dash?sign*3:Math.round(step*.6+Math.cos(facing)*effort*2),-bob+(p.dash?3:Math.round(Math.sin(facing)*effort)));
+    if(p.dash)c.rotate(sign*.22);
+    this.rect(-12,-16,24,22,'#183d31');this.rect(-10,-17,20,21,'#39704b');
+    this.rect(-8,-16,8,19,'#6b9b57');this.rect(-6,-14,3,13,'#a0bf70');
+    this.rect(3,-13,6,16,'#52864c');this.rect(-11,3,9,3,'#92ae62');this.rect(2,3,8,3,'#50744a');
+    // Leather baldric and belt with a tiny brass clasp.
+    for(let i=0;i<5;i++)this.rect(-7+i*3,-15+i*3,4,4,'#715337');
+    this.rect(-11,-2,22,4,'#4b392c');this.rect(-10,-2,19,1,'#aa8150');
+    if(!back){this.rect(-2,-3,5,5,'#d9b363');this.rect(0,-1,2,2,'#5f5034');}
+    this.rect(back?7:-12,0,6,6,'#6f5739');this.rect(back?8:-11,0,4,2,'#b09658');
+    const swing=Math.round(step*2);
+    for(const s of [-1,1]){
+      // The weapon hand is drawn at its actual grip by drawWeapon.
+      this.rect(s<0?-15:10,-14,5,9,'#224b37');this.rect(s<0?-14:11,-13,3,5,'#91b466');
+      if(s===-sign&&p.weapon!=='greatsword'){this.rect(s<0?-15:11,-5+s*swing,4,5,'#dfac76');this.rect(s<0?-15:11,-1+s*swing,4,3,'#695038');}
+    }
+    c.save();if(side)c.scale(sign,1);
+    const palette={o:'#18382e',g:'#3b7546',l:'#8bb95b',d:'#28513b',h:'#b88443',H:'#ecc476',s:'#f3c897',t:'#c68c62',w:'#f7efca',e:'#304b56'};
+    const rows=back?[
+      '.....ooooo......','....oglllgoo....','...oglllllggo...','..ogllllggggdo..','..ogggggggdddo..','..ogggggdddgoo..','...ohHHhhHho....','...ohhhhhhoo....','....ohhhhoo.....','.....otto.......'
+    ]:side?[
+      '.....ooooo......','....oglllgoo....','...ogllllgggo...','..ogggggggggo...','..ogddhHHHhho...','...odhHsswwso...','....ohHssessto..','....ohstsssso...','.....otsssso....','......otto......'
+    ]:[
+      '.....ooooo......','....oglllgoo....','...oglllllggo...','..oggggggggggo..','..ohHHHHHHHhho..','..tsHssHssHsst..','..otsweswesso...','...osssssssso...','....otssssto....','.....otto.......'
+    ];
+    rows.forEach((row,y)=>{for(let x=0;x<row.length;x++)if(palette[row[x]])this.rect(x*2-16,y*2-34,2,2,palette[row[x]]);});
+    // Cap tail trails softly instead of rotating the whole face with aim.
+    this.rect(side?-16:8,-26+Math.round(step),6,5,'#28513b');this.rect(side?-18:11,-23+Math.round(step),5,3,'#70a34e');
+    c.restore();c.restore();
+  }
+  blade(id,reach,width){
+    // All blades end at the combat pose's tip; no decorative swing arc.
+    const master=id==='master',deity=id==='greatsword',start=24,tip=reach,half=width/2;
+    this.rect(7,-3,15,6,deity?'#245954':master?'#433766':'#4e392d');
+    for(let x=9;x<20;x+=4)this.rect(x,-2,2,4,deity?'#6eb3a0':master?'#a795db':'#b69160');
+    this.rect(5,-4,4,8,deity?'#77c5b0':master?'#a199d5':'#d9b771');
+    this.rect(20,-half-5,5,width+10,deity?'#287c75':master?'#7164a4':'#a9894d');
+    this.rect(20,-half-5,3,width+10,deity?'#86d4b5':master?'#b0a5ed':'#e5c987');
+    if(master){this.rect(15,-half-8,7,4,'#8e81cd');this.rect(15,half+4,7,4,'#8e81cd');this.rect(21,-2,4,4,'#f3d67a');}
+    if(deity){
+      // Two blue/sea-green ribbons cross twice and join at a sharp tip.
+      for(let x=start;x<tip;x+=2){
+        const t=(x-start)/(tip-start),envelope=Math.min(1,(1-t)*6),offset=Math.sin(t*Math.PI*4)*half*.62*envelope;
+        const thick=Math.max(1,Math.min(4,(tip-x)*.42)),span=Math.min(2,tip-x);
+        for(const s of [-1,1]){const y=s*offset-thick/2;this.rect(x,y,span,thick,s<0?'#5595d0':'#55bd9e');this.rect(x,y,span,1,s<0?'#b6e2fa':'#b3f2c8');}
+      }
+      this.rect(25,-2,5,4,'#d0eac5');
+    }else{
+      for(let x=start;x<tip;x+=2){
+        const h=Math.max(1,Math.min(half,(tip-x)*.32)),span=Math.min(2,tip-x);
+        this.rect(x,-h,span,h*2,master?'#689cae':'#758e94');
+        this.rect(x,-h,span,Math.max(1,h),master?'#e1fff5':'#f0f0d7');
+        if(h>2)this.rect(x,0,span,1,master?'#b3ecdd':'#c0d3cc');
+      }
+      if(master){this.rect(30,-2,2,4,'#d8c976');this.rect(34,-1,2,2,'#d8c976');}
+    }
+  }
+  weaponArm(p,angle,twoHanded=false){
+    const c=this.ctx;c.save();c.translate(p.x,p.y);c.rotate(angle);
+    this.rect(2,-5,9,9,'#234934');this.rect(3,-5,7,3,'#85a75e');
+    this.rect(10,-4,7,8,'#513d2e');this.rect(11,-4,5,5,'#ebbd87');
+    if(twoHanded){this.rect(0,3,10,5,'#244d37');this.rect(6,1,5,5,'#e6b581');}
+    c.restore();
+  }
   drawWeapon(g){
     const {player:p,attack:a,time}=g,c=this.ctx,weapon=ForestContent.weapons[p.weapon];
     if(!a){
-      c.save();c.translate(p.x,p.y);c.rotate(p.dir+.35);
+      const angle=p.dir+.35;c.save();c.translate(p.x,p.y);c.rotate(angle);
       if(weapon.id==='flail'){
         for(let i=0;i<4;i++)this.rect(16+i*7,-2,4,4,'#b1c4cb');
         this.rect(36,-12,24,24,'#7b939e');this.rect(40,-9,8,7,'#c7d4d7');
         this.rect(44,-16,6,5,'#dfded0');this.rect(44,11,6,5,'#dfded0');this.rect(59,-3,5,6,'#dfded0');
-      }else if(weapon.id==='master'){
-        this.rect(8,-3,14,6,'#51469b');this.rect(22,-4,39,8,'#bff9ee');this.rect(25,-4,33,2,'#ffffff');
-        this.rect(19,-10,6,20,'#8e82d7');this.rect(15,-13,8,5,'#7061ba');this.rect(15,8,8,5,'#7061ba');this.rect(20,-2,5,4,'#d5e9a3');
       }else{
-        this.rect(17,-3,weapon.id==='greatsword'?49:28,weapon.id==='greatsword'?9:6,weapon.color);this.rect(19,-8,5,16,'#bc9e5f');
-      }c.restore();
+        this.blade(weapon.id,weapon.id==='greatsword'?77:weapon.id==='master'?61:49,weapon.width);
+      }c.restore();this.weaponArm(p,angle,weapon.id==='greatsword');
     }else{
       const pose=ForestCombat.pose(a,p);
       if(pose.kind==='ball'){
@@ -159,15 +232,11 @@ class ForestRenderer {
         const x=pose.x,y=pose.y;
         this.rect(x-12,y-16,24,32,'#566b78');this.rect(x-16,y-12,32,24,'#566b78');this.rect(x-12,y-12,24,24,'#92a9b3');this.rect(x-9,y-10,11,8,'#cad5d5');
         for(const [dx,dy]of[[0,-1],[1,0],[0,1],[-1,0]])this.rect(x+dx*17-3,y+dy*17-3,6,6,'#dfded0');
+        this.weaponArm(p,Math.atan2(y-p.y,x-p.x));
       }else{
         c.save();c.translate(p.x,p.y);c.rotate(pose.angle);
-        const color=a.kind==='spin'?'#d7fff4':weapon.color;
-        this.rect(17,-pose.width/2,pose.reach-17,pose.width,color);
-        this.rect(24,-pose.width/2,pose.reach-30,2,'#ffffff');
-        this.rect(19,-pose.width-3,5,pose.width*2+6,p.weapon==='master'?'#8e82d7':'#baa366');
-        this.rect(10,-3,12,6,'#715139');
-        if(p.weapon==='greatsword'){this.rect(38,-2,pose.reach-51,3,'#6a8aab');this.rect(pose.reach-8,-3,8,6,'#f1f3ea');}
-        c.restore();
+        this.blade(weapon.id,pose.reach,pose.width);
+        c.restore();this.weaponArm(p,pose.angle,weapon.id==='greatsword');
       }
     }
     if(p.holding&&p.weapon==='master'){
@@ -281,7 +350,8 @@ class ForestRenderer {
       c.fillStyle='#07131e70';c.beginPath();c.ellipse(e.x,e.y+12,e.radius+5,e.type==='boss'?e.radius*.35:7,0,0,Math.PI*2);c.fill();
       if(e.type==='player'){
         if(p.inv>0&&Math.floor(time*15)%2===0)c.globalAlpha=.45;
-        this.sprite('hero',p.x,p.y+15,3);c.globalAlpha=1;this.drawWeapon(g);
+        const behind=g.attack?Math.sin(ForestCombat.pose(g.attack,p).angle??p.dir)<-.3:Math.sin(p.dir+.35)<-.3;
+        if(behind)this.drawWeapon(g);this.hero(g);if(!behind)this.drawWeapon(g);c.globalAlpha=1;
         if(p.dashCD>0){this.rect(p.x-16,p.y+24,32,3,'#233c2c');this.rect(p.x-16,p.y+24,32*(1-p.dashCD/g.dashCooldown()),3,'#a9c97a');}
       }else if(e.type==='boss')this.boss(e,g);
       else{
