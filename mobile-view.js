@@ -9,7 +9,12 @@ class ForestMobileView {
     this.mapPanel=document.createElement('div');this.mapPanel.className='mobile-map-panel';this.mapPanel.hidden=true;
     this.mapPanel.innerHTML='<h2>Carte du donjon</h2><p id="mobile-map-floor"></p><canvas id="mobile-map" width="260" height="155" aria-label="Carte des salles explorées"></canvas><p>● Vous · ◆ Trésor · ☠ Gardien</p><button id="mobile-map-close">REPRENDRE LE JEU</button>';
     this.wrap.appendChild(this.mapPanel);
-    get('mobile-map-toggle').onclick=()=>{if(this.mapOpen){this.closeMap();return;}if(!onMapOpen())return;this.mapOpen=true;onReset();this.mapPanel.hidden=false;this.panel.classList.add('map-open');get('mobile-map-toggle').setAttribute('aria-expanded','true');get('mobile-map-floor').textContent=get('floor-label').textContent;get('mobile-map').getContext('2d').drawImage(get('map'),0,0);};
+    get('mobile-map-toggle').onclick=()=>{if(this.mapOpen){this.closeMap();return;}if(!onMapOpen())return;this.mapOpen=true;onReset();this.mapPanel.hidden=false;this.panel.classList.add('map-open');get('mobile-map-toggle').setAttribute('aria-expanded','true');get('mobile-map-floor').textContent=get('floor-label').textContent;
+      const canvas=get('mobile-map'),context=canvas.getContext('2d');
+      // Transparent source pixels must replace the previous floor, not overlay it.
+      context.clearRect(0,0,canvas.width,canvas.height);
+      context.drawImage(get('map'),0,0);
+    };
     get('mobile-map-close').onclick=()=>this.closeMap();
     get('mobile-fullscreen').onclick=()=>this.toggleFullscreen();get('fullscreen').onclick=()=>this.toggleFullscreen();get('mobile-pause').onclick=()=>{if(this.mapOpen)this.closeMap();get('pause').onclick();};
     document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement&&this.nativeFullscreen){this.nativeFullscreen=false;this.setImmersive(false);}});
