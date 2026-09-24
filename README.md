@@ -4,6 +4,8 @@ Un roguelite d’action en pixel art, inspiré des donjons de Zelda et des comba
 
 ## Jouer
 
+Sur PC, le bouton **Plein écran** se trouve en haut à droite du cadre du jeu. En plein écran, les cœurs et les rubis restent en haut à droite, sans commandes tactiles. **Tab** ouvre et ferme la carte. **Retour arrière (Backspace)** ouvre le carnet : inventaire, effets des objets, caractéristiques finales et paramètres de plein écran, musique et bruitages. La consultation suspend le jeu ; les deux préférences audio sont mémorisées séparément.
+
 Le héros possède des vues de face, de dos et de profil, une marche synchronisée avec ses déplacements, une posture d’esquive et des mains qui suivent ses armes. Les épées ont des pointes effilées ; la lame de la divinité entrelace deux brins bleu et vert. Ces animations conservent la cadence et la portée des attaques.
 
 Ouvrir **index.html** dans un navigateur récent sur ordinateur. Aucune installation ni compilation. Les polices facultatives utilisent une connexion Internet ; le jeu reste fonctionnel hors ligne.

@@ -3,6 +3,8 @@ class ForestAudio {
   constructor() {
     this.enabled = true;
     try { this.enabled = localStorage.getItem('forest-audio') !== 'off'; } catch {}
+    this.musicEnabled=this.enabled;this.effectsEnabled=this.enabled;
+    try {this.musicEnabled=this.enabled&&localStorage.getItem('forest-music')!=='off';this.effectsEnabled=this.enabled&&localStorage.getItem('forest-effects')!=='off';}catch{}
     this.context = null;
     this.paused = false;
     this.theme = '';
@@ -25,8 +27,8 @@ class ForestAudio {
         limiter.threshold.value = -14;
         limiter.ratio.value = 8;
         this.master.gain.value = this.paused ? 0 : .65;
-        this.music.gain.value = .62;
-        this.effects.gain.value = .8;
+        this.music.gain.value = this.musicEnabled ? .62 : 0;
+        this.effects.gain.value = this.effectsEnabled ? .8 : 0;
         this.music.connect(this.master);
         this.effects.connect(this.master);
         this.master.connect(limiter);
@@ -41,10 +43,22 @@ class ForestAudio {
 
   setEnabled(enabled) {
     this.enabled = enabled;
+    this.musicEnabled=enabled;this.effectsEnabled=enabled;
+    this.saveChannels();
     try { localStorage.setItem('forest-audio', enabled ? 'on' : 'off'); } catch {}
     if (enabled) this.unlock();
     this.setPaused(this.paused);
     this.nextNote = 0;
+  }
+  saveChannels(){
+    try{localStorage.setItem('forest-music',this.musicEnabled?'on':'off');localStorage.setItem('forest-effects',this.effectsEnabled?'on':'off');}catch{}
+    if(this.context){this.music.gain.setTargetAtTime(this.musicEnabled?.62:0,this.context.currentTime,.015);this.effects.gain.setTargetAtTime(this.effectsEnabled?.8:0,this.context.currentTime,.015);}
+  }
+  setChannel(channel,value){
+    if(!['music','effects'].includes(channel))return;
+    this[channel+'Enabled']=value;this.enabled=this.musicEnabled||this.effectsEnabled;
+    try{localStorage.setItem('forest-audio',this.enabled?'on':'off');}catch{}
+    if(this.enabled)this.unlock();this.saveChannels();this.setPaused(this.paused);this.nextNote=0;
   }
 
   setPaused(paused) {
@@ -88,7 +102,7 @@ class ForestAudio {
   }
 
   play(name) {
-    if (!this.enabled || this.paused || !this.context) return;
+    if (!this.enabled || !this.effectsEnabled || this.paused || !this.context) return;
     const now = this.context.currentTime;
     // Prevent loud stacks when a swing hits several enemies at once.
     if (now - (this.lastEffect.get(name) ?? -100) < (name.startsWith('enemy') ? .16 : .045)) return;
@@ -123,8 +137,8 @@ class ForestAudio {
   update(active, theme) {
     if (!this.context) return;
     const now = this.context.currentTime;
-    this.music.gain.setTargetAtTime(active ? .62 : 0, now, .04);
-    if (!active || !this.enabled || this.paused || this.context.state !== 'running') { this.nextNote = 0; return; }
+    this.music.gain.setTargetAtTime(active && this.musicEnabled ? .62 : 0, now, .04);
+    if (!active || !this.enabled || !this.musicEnabled || this.paused || this.context.state !== 'running') { this.nextNote = 0; return; }
     if (theme !== this.theme) { this.theme = theme; this.step = 0; this.nextNote = now; }
     if (this.nextNote > now + .06) return;
     const finale = theme === 'finalBoss', boss = theme === 'boss', shop = theme === 'shop', crypt = theme === 'crypt', eclipse = theme === 'eclipse';

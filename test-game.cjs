@@ -184,3 +184,8 @@ console.log('PASS: visible blade collision, large sword reach, linear flail, obs
 console.log('PASS: 18 relics, Force/Courage/Sagesse, half hearts, one resurrection and attempt resets.');
 console.log('PASS: all 9 weapon/blessing campaigns, boss rewards, equipment persistence and full final-phase health reset.');
 console.log('PASS: manual weapon selection, four creature telegraphs, three distinct boss kits, aggression and optional loot across 20 campaigns.');
+startCombat('master');t.addRelic(t.C.relics[0]);let prevented=0;const keyEvent=key=>({key,preventDefault(){prevented++;},repeat:false});
+handlers.keydown(keyEvent('Backspace'));assert.equal(g.mode,'menu');assert.ok(node('menu-content').innerHTML.includes('Master Sword'));assert.ok(node('menu-content').innerHTML.includes(t.C.relics[0].name));const menuTime=g.time;tick(20);assert.equal(g.time,menuTime,'menu freezes gameplay');
+node('menu-settings').onclick();node('setting-music').onclick();assert.equal(t.soundtrack.musicEnabled,false);assert.equal(t.soundtrack.effectsEnabled,true);node('setting-music').onclick();handlers.keydown(keyEvent('Escape'));assert.equal(g.mode,'play');assert.ok(prevented>=2);
+t.pause();handlers.keydown(keyEvent('Backspace'));handlers.keydown(keyEvent('Backspace'));assert.equal(g.mode,'pause','menu restores previous pause');t.pause();
+console.log('PASS: Backspace inventory/settings, effective stats, independent audio controls and pause restoration.');

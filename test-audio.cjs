@@ -33,4 +33,7 @@ assert.equal(new sandbox.Engine().enabled,false,'mute preference is remembered')
 engine.setEnabled(true);engine.setPaused(true);before=voices.length;engine.play('hit');engine.update(true,'forest');assert.equal(voices.length,before);assert.equal(engine.master.gain.value,0);
 engine.setPaused(false);engine.context.currentTime++;engine.play('coin');assert.ok(voices.length>before);
 engine.update(false,'forest');assert.equal(engine.music.gain.value,0,'music stops on end screens');
+engine.setChannel('music',false);engine.context.currentTime++;before=voices.length;engine.update(true,'forest');assert.equal(voices.length,before);engine.play('sword');assert.ok(voices.length>before,'effects remain active without music');assert.equal(engine.music.gain.value,0);
+engine.setChannel('effects',false);assert.equal(engine.enabled,false);engine.setChannel('music',true);before=voices.length;engine.play('hit');assert.equal(voices.length,before);engine.update(true,'forest');assert.ok(voices.length>before,'music remains active without effects');assert.equal(engine.effects.gain.value,0);
+const restored=new sandbox.Engine();assert.equal(restored.musicEnabled,true);assert.equal(restored.effectsEnabled,false);
 console.log('PASS: 23 effects, six distinct music arrangements, louder music, delayed initialization, mute, pause and end-screen stop.');
