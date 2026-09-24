@@ -13,10 +13,10 @@ class ForestRenderer {
     rows.forEach((row,j)=>[...row].forEach((key,i)=>{if(palette[key])this.rect(x-rows[0].length*scale/2+i*scale,y-rows.length*scale+j*scale,scale,scale,flash?'#fff4d0':palette[key]);}));
   }
   noise(x,y,seed){const n=Math.sin(x*127.1+y*311.7+seed)*43758.5453;return n-Math.floor(n);}
-  palette(level){return [
-    {floor:['#59634c','#606b52','#657056'],line:'#7c8365',wall:'#65715e',top:'#a0ab87',moss:'#78984b',accent:'#e0d399',dark:'#283c2b'},
+  palette(level,room){if(level===2&&room&&room.type!=='boss')return {floor:['#f2f3ee','#f7f7f1','#eaeeea'],line:'#d9dfdb',wall:'#cdd5d4',top:'#ffffff',moss:'#e1d5ab',accent:'#99835b',dark:'#9faeaf'};return [
+    {floor:['#59634c','#606b52','#657056'],line:'#7c8365',wall:'#93958d',top:'#c7c7b4',moss:'#78984b',accent:'#e0d399',dark:'#283c2b'},
     {floor:['#293c37','#2d403c','#31443e'],line:'#43544b',wall:'#3b4d47',top:'#67796b',moss:'#49674a',accent:'#b7d6a2',dark:'#101f1c'},
-    {floor:['#252d2b','#2a322e','#303932'],line:'#3e453e',wall:'#424d42',top:'#727d62',moss:'#645273',accent:'#e6c09d',dark:'#130f1c'}
+    {floor:['#191321','#201829','#251b30'],line:'#34243e',wall:'#2b2138',top:'#574266',moss:'#743e84',accent:'#c69bbd',dark:'#0a0810'}
   ][level];}
   terrain(g){
     const room=g.room,c=this.ctx;
@@ -33,6 +33,7 @@ class ForestRenderer {
     }else this.paintTerrain(g);
   }
   paintTerrain(g){
+    if(g.level===2){this.paintSanctuary(g);return;}
     const {room:r,level}=g,c=this.ctx,w=r.width,h=r.height,t=this.palette(level),night=level===1;
     const n=(x,y)=>this.noise(x,y,r.seed),soil=night?'#26342e':'#42533a';
     this.rect(0,0,w,h,soil);
@@ -72,7 +73,7 @@ class ForestRenderer {
     for(let row=0;row<h/24;row++)for(let col=-1;col<w/56;col++){
       const x=col*56+(row%2?28:0),y=row*24,v=n(col+70,row+310);
       if(x>64&&x+56<w-64&&y>=64&&y+24<=h-64)continue;
-      const shades=night?['#3b4a43','#45534a','#34473f']:['#69735f','#737c65','#5f6c59'];
+      const shades=night?['#3b4a43','#45534a','#34473f']:['#93968d','#a0a296','#858c83'];
       this.rect(x+2,y+2,52,20,shades[Math.floor(v*3)]);this.rect(x+5,y+2,46,3,t.top);this.rect(x+2,y+5,3,12,t.wall);
       this.rect(x+5,y+19,49,3,night?'#25382f':'#4a5945');this.rect(x+51,y+6,3,13,night?'#25382f':'#4a5945');
       this.rect(x+2,y+2,3+v*5,3,night?'#24362e':'#475742');this.rect(x+48,y+17,6,5,night?'#24362e':'#475742');
@@ -99,39 +100,70 @@ class ForestRenderer {
       this.rect(x-4,y+9,33,29,night?'#14251e':'#34482f');this.rect(x,y,25,29,t.wall);this.rect(x-3,y-3,31,8,t.top);this.rect(x+6,y+8,4,18,t.line);this.rect(x+14,y+8,4,18,t.dark);this.rect(x-3,y+27,31,5,t.wall);
     }
   }
-  floor(g){
-    const {room:r,level,time,player:p}=g,c=this.ctx,t=this.palette(level),w=r.width,h=r.height;
-    if(level<2)this.terrain(g);else{
+  paintSanctuary(g){
+    const r=g.room,c=this.ctx,w=r.width,h=r.height,dark=r.type==='boss',t=this.palette(2,r),n=(x,y)=>this.noise(x,y,r.seed);
     this.rect(0,0,w,h,t.dark);
-    for(let y=0;y<h/32;y++)for(let x=0;x<w/32;x++){
-      const n=this.noise(x,y,r.seed),wall=x<2||x>=w/32-2||y<2||y>=h/32-2;
-      this.rect(x*32,y*32,32,32,wall?t.wall:t.floor[Math.floor(n*3)]);
-      this.rect(x*32+1,y*32+1,30,wall?4:1,wall?t.top:t.line);
-      if(wall)this.rect(x*32,y*32+27,32,5,t.dark);
-      else this.rect(x*32,y*32,1,32,t.dark);
-      if(wall&&n>.65)this.rect(x*32+3,y*32+7,7,12,t.moss);
-      if(!wall&&n>.76){this.rect(x*32+8,y*32+9,7,2,t.line);this.rect(x*32+21,y*32+25,3,3,t.moss);}
+    for(let row=0;row<h/48;row++)for(let col=-1;col<w/48;col++){
+      const x=col*48+(row%2?24:0),y=row*48,v=n(col,row);
+      this.rect(x+1,y+1,46,46,t.floor[Math.floor(v*3)]);this.rect(x+3,y+2,41,1,dark?'#392a45':'#ffffff');
+      if(v>.45){this.rect(x+10,y+15,12,1,t.line);this.rect(x+20,y+16,7,1,t.line);this.rect(x+26,y+17,3,5,t.line);}
+      if(dark&&v>.65){this.rect(x+35,y+2,2,17,'#090710');this.rect(x+28,y+18,9,2,'#090710');}
     }
-    this.rect(64,64,w-128,9,t.dark);
-    for(const [x,y] of [[85,92],[w-107,92],[85,h-113],[w-107,h-113]]){
-      this.rect(x-6,y-8,32,38,t.dark);this.rect(x-2,y-8,24,28,t.top);this.rect(x+4,y,12,16,t.wall);
+    // The same stonework vocabulary, transformed into marble or blackened stone.
+    c.save();c.beginPath();c.rect(0,0,w,h);c.rect(64,64,w-128,h-128);c.clip('evenodd');this.rect(0,0,w,h,t.dark);
+    for(let row=0;row<h/24;row++)for(let col=-1;col<w/56;col++){
+      const x=col*56+(row%2?28:0),y=row*24;
+      if(x>64&&x+56<w-64&&y>=64&&y+24<=h-64)continue;
+      this.rect(x+2,y+2,52,20,dark?(n(col,row)>.5?'#30233e':'#241b31'):(n(col,row)>.5?'#e6eaea':'#dce3e2'));
+      this.rect(x+4,y+2,48,3,t.top);this.rect(x+4,y+19,48,3,t.wall);this.rect(x+49,y+5,4,14,t.wall);
+      if(n(col,row)>.65)this.rect(x+12,y+11,17,1,t.line);
+    }c.restore();
+    this.rect(64,64,w-128,7,t.dark);this.rect(64,64,5,h-128,t.dark);this.rect(w-69,64,5,h-128,t.dark);
+    for(const x of [110,w-114]){this.rect(x,90,3,h-180,dark?'#4e315e':'#c6b995');this.rect(x+5,90,1,h-180,dark?'#31213e':'#ffffff');}
+    for(const y of [94,h-98])this.rect(114,y,w-228,2,dark?'#4e315e':'#c6b995');
+    if(!dark){
+      for(const x of [w/2-94,w/2+92])this.rect(x,104,2,h-208,'#ddd4b8');
+      for(const x of [151,w-151])for(const y of [195,h-180])this.sanctuaryStatue(x,y);
+    }else{
+      // Branching stains run inward from the walls and leave the arena readable.
+      for(let i=0;i<26;i++){
+        const side=i%4,along=90+n(i,800)*((side<2?w:h)-180),length=60+n(i,820)*170;
+        c.save();if(side===0)c.translate(along,62);if(side===1){c.translate(along,h-62);c.rotate(Math.PI);}if(side===2){c.translate(62,along);c.rotate(-Math.PI/2);}if(side===3){c.translate(w-62,along);c.rotate(Math.PI/2);}
+        for(let j=0;j<length;j+=7){const bend=Math.sin(j*.047+i)*21,width=Math.max(2,18-j*.07);this.rect(bend,j,width,9,'#0d0915');this.rect(bend+2,j,2,8,'#4d285e');if(j%21===0)this.rect(bend-13,j,17,3,'#2c173b');}c.restore();
+      }
     }
-    for(let i=0;i<60;i++){
-      const x=75+this.noise(i,50,r.seed)*(w-150),y=i%2?78+this.noise(i,40,r.seed)*30:h-105+this.noise(i,45,r.seed)*30;
-      this.rect(x,y,3,9,t.moss);this.rect(x-3,y+4,9,3,t.top);
-    }
-    // Broken masonry, hanging vines and roots remain decorative and passable.
-    for(let i=0;i<24;i++){
-      const x=85+this.noise(i,72,r.seed)*(w-170),side=i%2,y=side?h-75:64;
-      for(let j=0;j<4+i%4;j++){this.rect(x+Math.sin(j+i)*9,y+(side?-j:j)*8,5,10,t.moss);if(j%2)this.rect(x+Math.sin(j+i)*9-5,y+(side?-j:j)*8,14,4,t.top);}
-      if(i%3===0){this.rect(x,side?h-122:102,22,11,t.wall);this.rect(x+3,side?h-124:100,16,4,t.top);}
-    }
-    }
+  }
+  sanctuaryStatue(x,y){
+    const c=this.ctx;c.save();c.translate(x,y);
+    this.rect(-26,20,52,13,'#bbc7c7');this.rect(-28,16,56,7,'#ffffff');this.rect(-22,6,44,12,'#e1e6e4');
+    // Robed guardian, folded wings and a ceremonial blade.
+    for(const s of [-1,1]){this.rect(s<0?-31:18,-54,13,40,'#d0dada');this.rect(s<0?-34:24,-62,10,27,'#f9fbf6');this.rect(s<0?-26:17,-37,9,29,'#eef2ed');}
+    this.rect(-14,-46,28,50,'#d4dddc');this.rect(-10,-48,18,49,'#ffffff');this.rect(-5,-43,3,42,'#e4e9e5');this.rect(8,-34,5,35,'#b8c8ca');
+    this.rect(-11,-67,22,20,'#eff3f0');this.rect(-8,-70,16,7,'#ffffff');this.rect(-6,-57,12,2,'#a7b9bd');
+    this.rect(-18,-35,36,7,'#fafffa');this.rect(-2,-40,4,44,'#b7a679');this.rect(-9,-27,18,3,'#ccb98c');this.rect(-1,-24,2,27,'#f5f5ed');
+    c.restore();
+  }
+  corruptionGate(x,y,angle,time){
+    const c=this.ctx;c.save();c.translate(x,y);c.rotate(angle);
+    for(let i=0;i<15;i++){
+      const side=i%2?-1:1,length=62+(i*37)%110,start=side*(43+(i*13)%52);
+      for(let j=0;j<length;j+=6){const bend=start+side*j*.35+Math.sin(j*.07+i)*9,thickness=Math.max(2,15-j*.07);
+        this.rect(bend,j-24,thickness,8,'#1a1026');this.rect(bend+2,j-24,2,7,'#573363');
+        if(j%18===0)this.rect(bend-side*9,j-24,12,3,'#32203f');
+      }
+      const pulse=(time*.3+i*.13)%1;c.globalAlpha=.18+Math.sin(pulse*Math.PI)*.3;this.rect(start+side*pulse*length*.35,pulse*length-24,3,6,'#b36bd0');c.globalAlpha=1;
+    }c.restore();
+  }
+  floor(g){
+    const {room:r,level,time,player:p}=g,c=this.ctx,t=this.palette(level,r),w=r.width,h=r.height;
+    this.terrain(g);
     if(level===0){c.save();c.globalAlpha=.06;c.fillStyle='#ffffb0';for(let i=0;i<3;i++){c.beginPath();c.moveTo(170+i*240,64);c.lineTo(235+i*240,64);c.lineTo(400+i*200,h-64);c.lineTo(265+i*200,h-64);c.fill();}c.restore();}
     for(const [dx,dy,x,y,vertical] of [[-1,0,32,h/2-40,true],[1,0,w-80,h/2-40,true],[0,-1,w/2-40,32,false],[0,1,w/2-40,h-80,false]]){
       const next=g.neighbor(dx,dy);if(!next)continue;
       const locked=!r.clear||(next.type==='boss'&&!next.visited&&ForestContent.floors[level].key&&!p.key);
-      this.templeDoor(x+(vertical?24:40),y+(vertical?40:24),dx<0?-Math.PI/2:dx>0?Math.PI/2:dy>0?Math.PI:0,locked,t,next.type==='boss');
+      const angle=dx<0?-Math.PI/2:dx>0?Math.PI/2:dy>0?Math.PI:0,px=x+(vertical?24:40),py=y+(vertical?40:24),infected=level===2&&next.type==='boss';
+      if(infected)this.corruptionGate(px,py,angle,time);
+      this.templeDoor(px,py,angle,locked,infected?this.palette(2,next):t,next.type==='boss');
     }
     const crack=g.secretEntrance();
     if(crack){
@@ -141,7 +173,7 @@ class ForestRenderer {
     }
     for(const [x,y] of [[168,87],[w-172,87],[168,h-89],[w-172,h-89]]){
       this.rect(x-6,y,12,13,'#3b3225');this.rect(x-8,y-8,16,11,t.top);
-      this.rect(x-5,y-15-Math.sin(time*9+x)*2,10,13,level===1?'#86ace2':'#e6b660');this.rect(x-2,y-15,4,8,'#f5dfa0');
+      this.rect(x-5,y-15-Math.sin(time*9+x)*2,10,13,level===2?(r.type==='boss'?'#8e50be':'#e5f8ff'):level===1?'#86ace2':'#e6b660');this.rect(x-2,y-15,4,8,level===2?'#f4efff':'#f5dfa0');
       const glow=c.createRadialGradient(x,y,4,x,y,80);glow.addColorStop(0,level===1?'#78a9ea24':'#e8b74b20');glow.addColorStop(1,'#00000000');c.fillStyle=glow;c.fillRect(x-80,y-80,160,160);
     }
     for(const o of r.objects){
@@ -180,9 +212,10 @@ class ForestRenderer {
   }
   fountain(g){
     const {room:r,time}=g,x=r.width/2,y=r.height*.4,large=g.level===2;
-    this.rect(x-56,y-15,112,65,'#495967');this.rect(x-48,y-23,96,58,'#718698');
-    this.rect(x-39,y-16,78,39,r.opened?'#38524a':'#68a29b');this.rect(x-28,y-9,52,4,'#bbf1db');
-    this.text(large?'LA GRANDE FÉE':'SOURCE DES FÉES',x,y-58,14,'#c2eadb');
+    this.rect(x-56,y-15,112,65,large?'#cad5d7':'#495967');this.rect(x-48,y-23,96,58,large?'#ffffff':'#718698');
+    this.rect(x-39,y-16,78,39,large?(r.opened?'#acccd2':'#7cbfcf'):r.opened?'#38524a':'#68a29b');this.rect(x-28,y-9,52,4,large?'#f4ffff':'#bbf1db');
+    if(large){this.rect(x-51,y+33,102,3,'#c4af7d');this.rect(x-32,y+18,64,2,'#e0f8fc');}
+    this.text(large?'LA GRANDE FÉE':'SOURCE DES FÉES',x,y-58,14,large?'#687c8a':'#c2eadb');
     if(!r.opened){
       const fx=x+Math.sin(time)*22,fy=y-17+Math.sin(time*2)*6;
       this.rect(fx-15,fy-5,11,9,'#d3f6e9');this.rect(fx+4,fy-5,11,9,'#d3f6e9');this.rect(fx-3,fy-9,6,18,'#e7de99');
@@ -193,9 +226,9 @@ class ForestRenderer {
     const {room:r,level,time}=g,c=this.ctx,x=r.width/2;
     if(level===2&&r.type==='boss')this.corruptedTree(g);
     if(r.type==='start'){
-      for(let i=0;i<3;i++)this.rect(x-83+i*12,210+i*12,166-i*24,105-i*24,this.palette(level).wall);
-      this.text(level===0?'✦':level===1?'☾':'▲',x,284,55,this.palette(level).top);
-      this.text(ForestContent.floors[level].name.toUpperCase(),x,480,12,this.palette(level).accent);
+      for(let i=0;i<3;i++)this.rect(x-83+i*12,210+i*12,166-i*24,105-i*24,this.palette(level,r).wall);
+      this.text(level===0?'✦':level===1?'☾':'▲',x,284,55,level===2?'#b3a16d':this.palette(level,r).top);
+      this.text(ForestContent.floors[level].name.toUpperCase(),x,480,12,this.palette(level,r).accent);
     }
     if(r.type==='treasure'){this.chest(x,285,r.opened);if(!r.opened)this.text('✦',x,242+Math.sin(time*2)*4,18,'#e2ce8b');}
     if(r.type==='key'&&!r.clear){this.rect(x-40,270,80,50,this.palette(level).wall);this.text('☾',x,303,32,'#c8ba7b');}
@@ -341,8 +374,8 @@ class ForestRenderer {
       for(let i=0;i<8;i++){this.rect(side*(38+i*30)-18,40+i*12,48,19,'#292030');this.rect(side*(42+i*30)-12,40+i*12,32,5,'#735070');}
       for(let i=0;i<7;i++){this.rect(side*(40+i*28)-20,-100-i*25,54,28,'#322936');this.rect(side*(46+i*28)-10,-110-i*25,16,31,'#533d55');}
     }
-    this.rect(-61,-265,122,315,'#2b2430');this.rect(-48,-235,25,270,'#463743');this.rect(23,-255,20,295,'#534047');
-    for(let i=0;i<30;i++){const a=i*2.4,px=Math.cos(a)*(130+i%4*40),py=-250+Math.sin(a)*80;this.rect(px-38,py-25,76,45,i%3?'#374638':'#526043');if(i%3===0)this.rect(px-30,py-25,40,6,'#756078');}
+    this.rect(-61,-265,122,315,'#171020');this.rect(-48,-235,25,270,'#322039');this.rect(23,-255,20,295,'#422848');
+    for(let i=0;i<30;i++){const a=i*2.4,px=Math.cos(a)*(130+i%4*40),py=-250+Math.sin(a)*80;this.rect(px-38,py-25,76,45,i%3?'#21152e':'#352141');if(i%3===0)this.rect(px-30,py-25,40,6,'#644373');}
     for(let i=0;i<12;i++){this.rect(-8+Math.sin(i*1.2)*18,-240+i*24,13,27,'#8b4b87');this.rect(-4+Math.sin(i*1.2)*18,-237+i*24,4,15,'#bd699a');}
     c.restore();
     this.text('L’ARBRE-MÈRE CORROMPU',x,y-355,15,'#b899ab');

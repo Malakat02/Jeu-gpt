@@ -4,6 +4,8 @@ Un roguelite d’action en pixel art, inspiré des donjons de Zelda et des comba
 
 ## Jouer
 
+Le premier étage distingue ses murs de pierre claire du dallage vert. Au troisième étage, l’entrée et la fontaine sont en marbre blanc avec des statues de gardiens et des détails dorés. Des veines de corruption animées entourent la porte du boss ; son arène est en pierre noircie et violet sombre, avec l’arbre corrompu. Ces décors restent sans collision supplémentaire.
+
 Sur PC, le bouton **Plein écran** se trouve en haut à droite du cadre du jeu. En plein écran, les cœurs et les rubis restent en haut à gauche, sans commandes tactiles. **Tab** ouvre et ferme la carte. **Retour arrière (Backspace)** ouvre le carnet : inventaire, effets des objets, caractéristiques finales et paramètres de plein écran, musique et bruitages. La consultation suspend le jeu ; les deux préférences audio sont mémorisées séparément.
 
 Les deux premiers étages possèdent une maçonnerie de pierre usée et des sols détaillés : lierre, mousse, herbe et fleurs dans les ruines lumineuses ; ronces, terre humide, reflets sur les dalles et champignons dans le dédale sombre. Ces éléments sont décoratifs et ne bloquent pas les déplacements. Les décors fixes sont mis en cache par salle pour préserver la fluidité.
