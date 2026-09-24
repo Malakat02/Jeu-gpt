@@ -49,6 +49,12 @@ class ForestRenderer {
       const locked=!r.clear||(next.type==='boss'&&!next.visited&&ForestContent.floors[level].key&&!p.key);
       this.templeDoor(x+(vertical?24:40),y+(vertical?40:24),dx<0?-Math.PI/2:dx>0?Math.PI/2:dy>0?Math.PI:0,locked,t,next.type==='boss');
     }
+    const crack=g.secretEntrance();
+    if(crack){
+      c.save();c.translate(crack.x+crack.dx*8,crack.y+crack.dy*24);if(crack.dx)c.rotate(Math.PI/2);
+      for(const [x,y,ww,hh] of [[-2,-15,3,9],[-6,-7,7,3],[-6,-5,3,9],[-4,3,9,3],[2,5,3,10],[-10,-1,5,2]])this.rect(x,y,ww,hh,'#070b08');
+      if(crack.secret.entranceHits>0)this.rect(-12,1,8,3,'#070b08');if(crack.secret.entranceHits>1)this.rect(5,5,10,3,'#070b08');c.restore();
+    }
     for(const [x,y] of [[168,87],[w-172,87],[168,h-89],[w-172,h-89]]){
       this.rect(x-6,y,12,13,'#3b3225');this.rect(x-8,y-8,16,11,t.top);
       this.rect(x-5,y-15-Math.sin(time*9+x)*2,10,13,level===1?'#86ace2':'#e6b660');this.rect(x-2,y-15,4,8,'#f5dfa0');
@@ -373,7 +379,7 @@ class ForestRenderer {
     }
   }
   drawMap(g){
-    const c=this.map,rooms=g.rooms,minX=Math.min(...rooms.map(r=>r.x)),maxX=Math.max(...rooms.map(r=>r.x)),minY=Math.min(...rooms.map(r=>r.y)),maxY=Math.max(...rooms.map(r=>r.y));
+    const c=this.map,rooms=g.rooms.filter(r=>r.type!=='secret'||r.visited),minX=Math.min(...rooms.map(r=>r.x)),maxX=Math.max(...rooms.map(r=>r.x)),minY=Math.min(...rooms.map(r=>r.y)),maxY=Math.max(...rooms.map(r=>r.y));
     const step=Math.min(39,230/(maxX-minX+1),130/(maxY-minY+1)),rw=step*.65,rh=step*.48;
     const originX=(260-(maxX-minX)*step-rw)/2,originY=(155-(maxY-minY)*step-rh)/2;
     const pos=r=>({x:originX+(r.x-minX)*step,y:originY+(r.y-minY)*step});

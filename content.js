@@ -45,7 +45,42 @@ const ForestContent = (() => {
   function sample(list,n){const copy=[...list];for(let i=copy.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[copy[i],copy[j]]=[copy[j],copy[i]];}return copy.slice(0,n);}
   function makeRooms(level){
     const config=floors[level];
-    return config.layout.map(([x,y,type,name],id)=>({id,x,y,type,name,visited:false,clear:['start','treasure','shop','ante'].includes(type),enemies:null,objects:[],drops:[],opened:false,rewardTaken:false,seed:Math.random()*1000,offer:sample(relics,3),shop:sample(relics,2),sold:[false,false,false],width:level===2&&type==='boss'?1440:960,height:level===2&&type==='boss'?960:640}));
+    const plan=level===2?{layout:third,edges:config.edges}:generateFloor(level);
+    const rooms=plan.layout.map(([x,y,type,name],id)=>({id,x,y,type,name,links:[],visited:false,clear:['start','treasure','shop','ante','secret'].includes(type),enemies:null,objects:[],drops:[],opened:false,rewardTaken:false,seed:Math.random()*1000,offer:sample(relics,3),shop:sample(relics,2),sold:[false,false,false],width:level===2&&type==='boss'?1440:960,height:level===2&&type==='boss'?960:640}));
+    for(const [a,b] of plan.edges){rooms[a].links.push(b);rooms[b].links.push(a);}
+    const secret=rooms.find(r=>r.type==='secret');if(secret){secret.entranceHits=0;secret.entranceOpen=false;}
+    return rooms;
+  }
+  function generateFloor(level){
+    const count=level===0?11+Math.floor(Math.random()*3):18+Math.floor(Math.random()*5);
+    const cells=[{x:0,y:0,depth:0}],edges=[],dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+    const occupied=(x,y)=>cells.some(c=>c.x===x&&c.y===y);
+    // Grow explicit passages. The darker floor favours long winding branches.
+    while(cells.length<count-1){
+      const frontier=[];
+      cells.forEach((c,id)=>{for(const [dx,dy] of dirs)if(!occupied(c.x+dx,c.y+dy))frontier.push({parent:id,x:c.x+dx,y:c.y+dy});});
+      const recent=frontier.filter(c=>c.parent===cells.length-1),pool=level===1&&recent.length&&Math.random()<.7?recent:frontier;
+      const next=pool[Math.floor(Math.random()*pool.length)],id=cells.length;
+      cells.push({x:next.x,y:next.y,depth:cells[next.parent].depth+1});edges.push([next.parent,id]);
+    }
+    const degree=id=>edges.filter(e=>e.includes(id)).length;
+    const leaves=cells.map((c,id)=>id).filter(id=>id>0&&degree(id)===1);
+    const boss=leaves.sort((a,b)=>cells[b].depth-cells[a].depth)[0];
+    const types=new Map([[0,'start'],[boss,'boss']]);
+    const available=sample(cells.map((_,id)=>id).filter(id=>id!==0&&id!==boss),4);
+    ['shop','treasure','key','ante'].forEach((type,i)=>types.set(available[i],type));
+    if(level===0)for(let a=0;a<cells.length;a++)for(let b=a+1;b<cells.length;b++){
+      if(a===boss||b===boss||Math.abs(cells[a].x-cells[b].x)+Math.abs(cells[a].y-cells[b].y)!==1)continue;
+      if(!edges.some(e=>e.includes(a)&&e.includes(b))&&Math.random()<.28)edges.push([a,b]);
+    }
+    const layout=cells.map((c,id)=>{const type=types.get(id)||'fight',names=floors[level].layout.filter(r=>r[2]===type);return [c.x,c.y,type,names[Math.floor(Math.random()*names.length)][3]];});
+    // An unoccupied cell with exactly one neighbour can never hide an ordinary door
+    // or acquire a second entrance, even where corridors run beside each other.
+    const candidates=[];
+    cells.forEach((c,id)=>{if(id===boss)return;for(const [dx,dy] of dirs){const x=c.x+dx,y=c.y+dy;if(!occupied(x,y)&&cells.filter(n=>Math.abs(n.x-x)+Math.abs(n.y-y)===1).length===1)candidates.push({x,y,parent:id});}});
+    const hidden=candidates[Math.floor(Math.random()*candidates.length)];
+    layout.push([hidden.x,hidden.y,'secret','La cache sous les racines']);edges.push([hidden.parent,cells.length]);
+    return {layout,edges};
   }
   return {relics,weapons,blessings,floors,makeRooms,sample,heal};
 })();

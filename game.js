@@ -6,7 +6,7 @@
   let last=0,pointerHeld=false,pendingChoice=null,touchControls=null,touchDash=false,mobileView=null,touchLayout=null,layoutPreviousMode=null;
   let legacy={deaths:0,wins:0};
   try{const saved=JSON.parse(localStorage.getItem('forest-echoes'));if(saved&&Number.isFinite(saved.deaths)&&Number.isFinite(saved.wins))legacy=saved;}catch{}
-  const g={mode:'title',level:0,rooms:[],room:null,player:null,particles:[],shots:[],beams:[],hazards:[],drops:[],boomerang:null,attack:null,time:0,shake:0,toastTime:0,runSeed:0,kills:0,clears:0,transition:0,neighbor,connected,dashCooldown};
+  const g={mode:'title',level:0,rooms:[],room:null,player:null,particles:[],shots:[],beams:[],hazards:[],drops:[],boomerang:null,attack:null,time:0,shake:0,toastTime:0,runSeed:0,kills:0,clears:0,transition:0,neighbor,connected,secretEntrance,dashCooldown};
   function sfx(name){soundtrack.play(name);}
   function syncSoundButton(){$('sound').textContent='SON : '+(soundtrack.enabled?'ON':'OFF');$('sound').title=soundtrack.enabled?'Couper musique et bruitages':'Activer musique et bruitages';}
   function toast(message){$('toast').textContent=touchControls?.enabled?message.replace(/\bE\b/g,'A'):message;$('toast').style.opacity=1;g.toastTime=3.8;}
@@ -21,7 +21,13 @@
   function loadFloor(level){g.level=level;g.rooms=C.makeRooms(level);g.player.key=0;g.player.x=480;g.player.y=410;clearInput();clearRoomEffects();enter(g.rooms[0]);updateHUD();}
   function connected(a,b){
     if(!a||!b||Math.abs(a.x-b.x)+Math.abs(a.y-b.y)!==1)return false;
-    const edges=C.floors[g.level].edges;return !edges||edges.some(([i,j])=>(a.id===i&&b.id===j)||(a.id===j&&b.id===i));
+    const secret=a.type==='secret'?a:b.type==='secret'?b:null;
+    return a.links.includes(b.id)&&(!secret||secret.entranceOpen);
+  }
+  function secretEntrance(){
+    const secret=g.rooms.find(r=>r.type==='secret'&&!r.entranceOpen&&r.links.includes(g.room.id));if(!secret)return null;
+    const dx=secret.x-g.room.x,dy=secret.y-g.room.y;
+    return {secret,dx,dy,x:dx<0?64:dx>0?g.room.width-64:g.room.width/2,y:dy<0?80:dy>0?g.room.height-80:g.room.height/2,radius:14};
   }
   function neighbor(dx,dy){return g.rooms.find(r=>r.x===g.room.x+dx&&r.y===g.room.y+dy&&connected(g.room,r));}
   function enemy(type,x,y){
@@ -41,6 +47,7 @@
     g.room=r;r.visited=true;clearRoomEffects();g.drops=r.drops;g.transition=.4;g.player.inv=Math.max(g.player.inv,.8);g.player.holding=false;g.player.holdTime=0;
     if(r.enemies===null){
       r.objects=roomObjects(r);r.enemies=[];
+      if(r.type==='secret')r.drops.push({x:r.width/2-24,y:r.height/2,type:'rupee',value:5},{x:r.width/2+24,y:r.height/2,type:'heart'});
       if(!r.clear){
         if(r.type==='boss'){r.enemies.push(enemy('boss',r.width/2,r.height*.38));toast(`${C.floors[g.level].bossName} · Esquivez puis ripostez !`);sfx('boss');}
         else{
@@ -93,6 +100,11 @@
   function updateAttack(dt){
     const a=g.attack;if(!a)return;const previous=a.age;a.age=Math.min(a.duration,a.age+dt);
     for(const e of g.room.enemies){if(e.hp<=0||a.hit.has(e)||e.transform>0)continue;if(Combat.sweepHits(a,g.player,e,previous,a.age)&&!lineBlocked(a.kind==='flail'?a.origin:g.player,e)){a.hit.add(e);hit(e,a.damage);}}
+    const entrance=secretEntrance();
+    if(entrance&&!a.hit.has(entrance.secret)&&Combat.sweepHits(a,g.player,entrance,previous,a.age)&&!lineBlocked(a.kind==='flail'?a.origin:g.player,entrance)){
+      const secret=entrance.secret;a.hit.add(secret);secret.entranceHits++;burst(entrance.x,entrance.y,'#667157',8);sfx('hit');
+      if(secret.entranceHits===3){secret.entranceOpen=true;g.shake=5;toast('Le mur cède · un passage secret !');sfx('door');updateHUD();}
+    }
     if(a.age>=a.duration)g.attack=null;
   }
   function hit(e,damage){

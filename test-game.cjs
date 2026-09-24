@@ -21,26 +21,28 @@ function startCombat(weapon='sword'){t.newRun();t.equipWeapon(weapon);Object.ass
 
 // Every floor is connected, with a reachable key before its locked boss.
 for(let level=0;level<3;level++){
-  t.newRun();t.loadFloor(level);assert.equal(g.rooms.length,[12,23,3][level]);
+  t.newRun();t.loadFloor(level);assert.ok(level===2?g.rooms.length===3:level===0?g.rooms.length>=11&&g.rooms.length<=13:g.rooms.length>=18&&g.rooms.length<=22);
   const visited=new Set([0]),queue=[g.rooms[0]];
   while(queue.length){const r=queue.shift();for(const n of g.rooms)if(!visited.has(n.id)&&g.connected(r,n)&&n.type!=='boss'){visited.add(n.id);queue.push(n);}}
-  assert.equal(visited.size,g.rooms.length-1,'all non-boss rooms reachable without the boss');
+  assert.equal(visited.size,g.rooms.length-(level===2?1:2),'all ordinary non-boss rooms reachable without the boss or secret');
   if(level<2)assert.ok(g.rooms.some(r=>r.type==='key'&&visited.has(r.id)));
   const boss=g.rooms.find(r=>r.type==='boss');assert.ok(g.rooms.some(r=>visited.has(r.id)&&g.connected(r,boss)));
   for(const r of g.rooms){t.enter(r);for(const e of r.enemies)assert.equal(t.blocked(e.x,e.y,e.radius),false,'enemies spawn outside obstacles');t.renderer.draw(g);t.renderer.drawMap(g);}
 }
-t.newRun();t.loadFloor(1);assert.equal(g.connected(g.rooms[0],g.rooms[5]),false,'adjacent maze cells may be separated by a wall');assert.equal(g.rooms.filter(r=>r.type==='treasure').length,3);
+t.newRun();t.loadFloor(1);assert.equal(g.rooms.filter(r=>r.type==='treasure').length,1);
 t.loadFloor(2);assert.deepEqual(Array.from(g.rooms,r=>r.type),['start','ante','boss']);assert.equal(g.rooms[2].width,1440);assert.equal(g.rooms[2].height,960);
 
 // Initial-floor movement, sealed doors, persistence, key and economy.
-t.newRun();press('z',110);assert.equal(g.room.id,1);const combatRoom=g.room;press('s',25);assert.equal(g.room,combatRoom);
-killRoom();assert.ok(g.room.clear);press('s',35);assert.equal(g.room.id,0);t.enter(combatRoom);assert.equal(g.room.enemies.length,0);
+t.newRun();const initialY=g.player.y;press('z',10);assert.ok(g.player.y<initialY);
+function exitToward(next){const dx=next.x-g.room.x,dy=next.y-g.room.y;Object.assign(g.player,{x:dx<0?71:dx>0?889:480,y:dy<0?88:dy>0?552:320});g.transition=0;t.tryExit(dx,dy);}
+const combatRoom=g.rooms.find(r=>r.type==='fight'),returnRoom=g.rooms.find(r=>g.connected(combatRoom,r)&&r.type!=='boss');t.enter(combatRoom);exitToward(returnRoom);assert.equal(g.room,combatRoom);
+killRoom();assert.ok(g.room.clear);exitToward(returnRoom);assert.equal(g.room,returnRoom);t.enter(combatRoom);assert.equal(g.room.enemies.length,0);
 enterType('treasure');Object.assign(g.player,{x:480,y:285});t.interact();assert.equal(g.mode,'choice');t.chooseReward(0);assert.equal(g.player.items.length,1);t.interact();assert.equal(g.mode,'play');
 enterType('shop');Object.assign(g.player,{x:480,y:350,money:0});let items=g.player.items.length;t.interact();assert.equal(g.player.items.length,items);g.player.money=50;t.interact();assert.equal(g.player.money,32);assert.equal(g.player.items.length,items+1);t.interact();assert.equal(g.player.money,32);
 enterType('ante');Object.assign(g.player,{x:480,y:256,hp:1});t.interact();assert.equal(g.player.hp,g.player.max);g.player.hp=1;t.interact();assert.equal(g.player.hp,1,'fountain has a single use');
-Object.assign(g.player,{x:889,y:320,key:0});g.transition=0;t.tryExit(1,0);assert.equal(g.room.type,'ante');
+const gateBoss=g.rooms.find(r=>r.type==='boss'),gateRoom=g.rooms.find(r=>g.connected(r,gateBoss));t.enter(gateRoom);killRoom();g.player.key=0;exitToward(gateBoss);assert.equal(g.room,gateRoom);
 enterType('key');killRoom();Object.assign(g.player,{x:480,y:300});t.collectDrops();assert.equal(g.player.key,1);t.collectDrops();assert.equal(g.player.key,1);
-enterType('ante');Object.assign(g.player,{x:889,y:320});g.transition=0;t.tryExit(1,0);assert.equal(g.room.type,'boss');assert.equal(g.player.key,0);
+t.enter(gateRoom);exitToward(gateBoss);assert.equal(g.room.type,'boss');assert.equal(g.player.key,0);
 
 // Real sword geometry: hits occur during the visible sweep, once per target.
 startCombat();const front=target(470,320),back=target(350,320),outside=target(510,320);g.room.enemies=[front,back,outside];
@@ -162,7 +164,22 @@ startCombat();press('d',8);assert.ok(g.player.moving&&g.player.walkCycle>0);cons
 g.room.objects=[{x:g.player.x+12,y:g.player.y-30,w:50,h:60}];press('d',4);assert.equal(g.player.moving,false);assert.equal(g.player.walkCycle,gait);
 for(const weapon of ['sword','master','greatsword','flail'])for(const dir of [0,Math.PI/2,Math.PI,-Math.PI/2]){startCombat(weapon);g.player.dir=dir;t.renderer.draw(g);t.attack();tick(4);t.renderer.draw(g);}
 console.log('PASS: quiet anticipation, distinct launch sounds and boss poses, preserved AOE warnings, final boss music routing and idle Master Sword.');
-console.log('PASS: 38 connected rooms, labyrinth walls, spawn safety, rendering, keys, fountains, economy and treasure persistence.');
+// Every equipped weapon opens each wall direction in exactly three separate blows.
+for(const weapon of ['sword','master','greatsword','flail'])for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+  startCombat(weapon);const parent=g.rooms[0],secret=g.rooms.find(r=>r.type==='secret');
+  Object.assign(parent,{x:0,y:0,links:[secret.id],clear:true});Object.assign(secret,{x:dx,y:dy,links:[parent.id]});g.rooms=[parent,secret];g.room=parent;
+  const entrance=g.secretEntrance();Object.assign(g.player,{x:entrance.x-dx*40,y:entrance.y-dy*40,dir:Math.atan2(dy,dx)});
+  assert.equal(g.neighbor(dx,dy),undefined);
+  for(let blow=1;blow<=3;blow++){
+    g.player.attackCD=0;t.attack();for(let step=0;step<110&&g.attack;step++)t.updateAttack(.01);
+    assert.equal(secret.entranceHits,blow,weapon+' counts one impact per swing');assert.equal(secret.entranceOpen,blow===3);
+  }
+  assert.equal(g.neighbor(dx,dy),secret);assert.equal(secret.visited,false);
+  let mapped=0;const stroke=ctx.strokeRect;ctx.strokeRect=()=>mapped++;t.renderer.drawMap(g);ctx.strokeRect=stroke;assert.equal(mapped,1,'unvisited secret remains absent even after breaking the wall');
+  g.transition=0;g.player.x=entrance.x-dx*4;g.player.y=entrance.y-dy*4;t.tryExit(dx,dy);assert.equal(g.room,secret);assert.equal(secret.visited,true);assert.equal(g.neighbor(-dx,-dy),parent);
+  assert.equal(secret.drops.length,2);t.enter(parent);t.enter(secret);assert.equal(secret.drops.length,2,'secret rewards cannot respawn');
+}
+console.log('PASS: randomized connected floors, secret walls in all four directions with every weapon, three-hit opening, hidden map and persistent rewards.');
 console.log('PASS: visible blade collision, large sword reach, linear flail, obstacles, charged spin and full-health rays.');
 console.log('PASS: 18 relics, Force/Courage/Sagesse, half hearts, one resurrection and attempt resets.');
 console.log('PASS: all 9 weapon/blessing campaigns, boss rewards, equipment persistence and full final-phase health reset.');

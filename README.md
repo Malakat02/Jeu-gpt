@@ -1,6 +1,6 @@
 # Échos de la forêt
 
-Un roguelite d’action en pixel art, inspiré des donjons de Zelda et des combats de The Binding of Isaac. Trois étages, 38 salles et des tentatives où les objets, les armes et les dons changent votre façon de jouer. Graphismes en Canvas et musiques originales synthétisées, sans ressources extraites des jeux Nintendo.
+Un roguelite d’action en pixel art, inspiré des donjons de Zelda et des combats de The Binding of Isaac. Trois étages, dont deux générés aléatoirement à chaque tentative, et des objets, armes et dons qui changent votre façon de jouer. Graphismes en Canvas et musiques originales synthétisées, sans ressources extraites des jeux Nintendo.
 
 ## Jouer
 
@@ -29,11 +29,13 @@ Sur mobile, le joystick est flottant : posez le doigt sur une zone libre de l’
 
 Pour déplacer les boutons, ouvrez **Pause → Position des boutons**, ou touchez **⚙** dans la bordure supérieure droite lorsqu’elle est disponible. Glissez chaque bouton, puis choisissez **Terminé**. Les positions sont mémorisées dans le navigateur, séparément pour le portrait et le paysage. **Par défaut** rétablit la disposition initiale. Aucun bandeau inférieur ne réduit la scène ou bloque le joystick.
 
-1. **Les racines anciennes — 12 salles.** Le plan du premier étage est conservé : combats, trésor, boutique, clé au nord-ouest, fontaine et Morne-Racine au nord-est. Ce premier gardien conserve ses 54 PV, ses projectiles lents et sa charge annoncée.
-2. **Le dédale des ombres — 23 salles.** Ambiance sombre, lanternes bleues, passages explicitement reliés, boucles et impasses. Trois trésors, une boutique, deux fontaines et une nouvelle clé. Le Veilleur des ombres possède 120 PV, des attaques plus rapides et des zones dangereuses annoncées au sol.
+1. **Les racines anciennes — 11 à 13 salles, environ 12 en moyenne.** Un nouveau plan à chaque partie, avec des branches et quelques boucles. Exactement un trésor, une boutique, une salle secrète et Morne-Racine (54 PV), ainsi qu’une clé et une fontaine.
+2. **Le dédale des ombres — 18 à 22 salles, environ 20 en moyenne.** Ambiance sombre, lanternes bleues et longs chemins labyrinthiques. Exactement un trésor, une boutique, une salle secrète et le Veilleur des ombres (120 PV), ainsi qu’une clé et une fontaine. Les deux tailles incluent leur salle secrète.
 3. **Le sanctuaire de l’éclipse — exactement 3 salles.** Une entrée, une grande fontaine de fée qui soigne entièrement, puis une arène de 1440 × 960 (contre 960 × 640 pour les salles habituelles). Voragh est un boss géant à deux phases : **180 PV**, puis une **nouvelle barre complète de 220 PV**. Aucune clé n’est nécessaire à cet étage.
 
 Les portes de temple sculptées se ferment pendant les combats. Les battants scellés se distinguent du passage sombre et des marches visibles lorsque la porte est ouverte. Une fois un gardien vaincu, son coffre apparaît. Ouvrez-le avec **E**, récupérez la récompense, puis utilisez l’escalier pour descendre. L’équipement, les rubis et les statistiques sont conservés entre les étages ; la clé est propre à chaque étage. Le trésor final, le **Cœur de l’aube**, termine l’aventure.
+
+**Salles secrètes :** cherchez de petites fissures noires sur un mur et frappez-les trois fois avec l’arme équipée. Chaque attaque compte au maximum une fois, quelle que soit sa puissance. Le passage reste ouvert pour l’étage et permet l’aller-retour vers une seule salle. La cache n’apparaît sur aucune carte avant d’être visitée ; elle contient 5 rubis et un cœur. Son entrée ne partage jamais un emplacement avec une porte. Les clés et toutes les salles ordinaires restent accessibles sans découvrir les secrets ni traverser le boss.
 
 Les plans sont fixes, tandis que les rencontres et les offres de trésors changent entre les tentatives. La carte révèle les passages des salles explorées, sans dévoiler les impasses à l’avance.
 
@@ -97,10 +99,11 @@ node --check combat.js
 node --check renderer.js
 node --check audio.js
 node test-game.cjs
+node test-generation.cjs
 node test-audio.cjs
 node test-touch.cjs
 node test-mobile-view.cjs
 node test-touch-layout.cjs
 ```
 
-Les tests de simulation vérifient les 38 salles, les passages et clés, les collisions des armes, les coffres et achats, les 18 reliques, chaque don, les neuf combinaisons arme/don à travers les trois étages, les deux barres de vie finales et les resets à la mort. Ils couvrent aussi les préparations silencieuses, les postures des boss, les zones d’effet et la Master Sword au repos. Les tests audio couvrent les effets, les six arrangements, la pause et la coupure du son. L’équilibrage reste ajustable après des parties jouées.
+Les tests de génération vérifient 2 000 plans : tailles moyennes, unicité des salles spéciales, accessibilité des clés et séparation des entrées secrètes. Les simulations vérifient aussi les trois frappes avec chacune des quatre armes dans les quatre directions, la carte cachée, les passages et clés, les collisions des armes, les coffres et achats, les 18 reliques, les neuf combinaisons arme/don à travers les trois étages, les deux barres finales et les resets à la mort. Ils couvrent les préparations silencieuses, les postures des boss, les zones d’effet et la Master Sword au repos. Les tests audio couvrent les effets, les six arrangements, la pause et la coupure du son.
