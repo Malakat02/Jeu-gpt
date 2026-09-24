@@ -4,7 +4,9 @@ Un roguelite d’action en pixel art, inspiré des donjons de Zelda et des comba
 
 ## Jouer
 
-Sur PC, le bouton **Plein écran** se trouve en haut à droite du cadre du jeu. En plein écran, les cœurs et les rubis restent en haut à droite, sans commandes tactiles. **Tab** ouvre et ferme la carte. **Retour arrière (Backspace)** ouvre le carnet : inventaire, effets des objets, caractéristiques finales et paramètres de plein écran, musique et bruitages. La consultation suspend le jeu ; les deux préférences audio sont mémorisées séparément.
+Sur PC, le bouton **Plein écran** se trouve en haut à droite du cadre du jeu. En plein écran, les cœurs et les rubis restent en haut à gauche, sans commandes tactiles. **Tab** ouvre et ferme la carte. **Retour arrière (Backspace)** ouvre le carnet : inventaire, effets des objets, caractéristiques finales et paramètres de plein écran, musique et bruitages. La consultation suspend le jeu ; les deux préférences audio sont mémorisées séparément.
+
+Les deux premiers étages possèdent une maçonnerie de pierre usée et des sols détaillés : lierre, mousse, herbe et fleurs dans les ruines lumineuses ; ronces, terre humide, reflets sur les dalles et champignons dans le dédale sombre. Ces éléments sont décoratifs et ne bloquent pas les déplacements. Les décors fixes sont mis en cache par salle pour préserver la fluidité.
 
 Le héros possède des vues de face, de dos et de profil, une marche synchronisée avec ses déplacements, une posture d’esquive et des mains qui suivent ses armes. Les épées ont des pointes effilées ; la lame de la divinité entrelace deux brins bleu et vert. Ces animations conservent la cadence et la portée des attaques.
 

@@ -2,6 +2,7 @@ class ForestRenderer {
   constructor(canvas,map){
     this.canvas=canvas;this.ctx=canvas.getContext('2d');this.map=map.getContext('2d');
     this.ctx.imageSmoothingEnabled=false;
+    this.terrainCache=new WeakMap();
     this.palettes={hero:{g:'#6b994c',G:'#adc96d',d:'#2a4834',s:'#edc48f',h:'#a57c43',b:'#805b3c'},slime:{a:'#6f9f78',b:'#9ccb99',d:'#294c43',e:'#e8dfad'},bat:{a:'#89719a',b:'#b49aac',d:'#423b59',e:'#f4cba0'},spitter:{a:'#b27752',b:'#d6a16b',d:'#5f4b3c',e:'#f5d9a2'},knight:{a:'#759a99',b:'#b0c1ab',d:'#334951',e:'#e4a574'}};
     this.sprites={hero:['.....ggg......','....gGGgg.....','...ggGGggg....','...hhhss......','...hssds......','....ssss......','..ddggggdd....','.ddgGGgggdd...','..sgGGgggs....','...gggggg.....','...bbbbb......','...bb.bb......','..bbb.bbb.....'],slime:['....aaaa....','..aabbbbaa..','.abbbbbbbba.','aabbbbbbbbaa','abddbbddbbba','abedbbedbbba','aabbbbbbbbaa','.aaddddddaa.','..aaaaaaaa..'],bat:['a..........a','aa........aa','aba..aa..aba','abbaaaaaabba','abbbabbabbba','.abbdeedbba.','..aabbbbaa..','....aaaa....'],spitter:['....aaaa....','..aabbbbaa..','.abbbbbbbba.','abddbbddbbba','abeebbeebbaa','aabddddbbaa.','.aabddbaa...','..aaaaaaa...','.aaa..aaa...'],knight:['....bbbb....','...baaaab...','..bbaaaabb..','..bddddebb..','...dddddd...','.aaaaaaaaaa.','abbaaaaaabba','abbaaaaaabba','.dadaaaadad.','...aaaaaa...','...dd.dd....','..ddd.ddd...']};
   }
@@ -13,12 +14,94 @@ class ForestRenderer {
   }
   noise(x,y,seed){const n=Math.sin(x*127.1+y*311.7+seed)*43758.5453;return n-Math.floor(n);}
   palette(level){return [
-    {floor:['#354a30','#3a5033','#405537'],line:'#4b603d',wall:'#526446',top:'#91a371',moss:'#7eaa4e',accent:'#e0d399',dark:'#1e3220'},
-    {floor:['#192d25','#1c3029','#20372d'],line:'#2c4033',wall:'#304638',top:'#60745a',moss:'#476c40',accent:'#b7d6a2',dark:'#091b15'},
+    {floor:['#59634c','#606b52','#657056'],line:'#7c8365',wall:'#65715e',top:'#a0ab87',moss:'#78984b',accent:'#e0d399',dark:'#283c2b'},
+    {floor:['#293c37','#2d403c','#31443e'],line:'#43544b',wall:'#3b4d47',top:'#67796b',moss:'#49674a',accent:'#b7d6a2',dark:'#101f1c'},
     {floor:['#252d2b','#2a322e','#303932'],line:'#3e453e',wall:'#424d42',top:'#727d62',moss:'#645273',accent:'#e6c09d',dark:'#130f1c'}
   ][level];}
+  terrain(g){
+    const room=g.room,c=this.ctx;
+    // Cache only static scenery. Doors, cracks, flames and gameplay stay live.
+    if(typeof document.createElement==='function'){
+      let cached=this.terrainCache.get(room);
+      if(!cached){
+        cached=document.createElement('canvas');cached.width=room.width;cached.height=room.height;
+        this.ctx=cached.getContext('2d');this.ctx.imageSmoothingEnabled=false;
+        try{this.paintTerrain(g);}finally{this.ctx=c;}
+        this.terrainCache.set(room,cached);
+      }
+      c.drawImage(cached,0,0);
+    }else this.paintTerrain(g);
+  }
+  paintTerrain(g){
+    const {room:r,level}=g,c=this.ctx,w=r.width,h=r.height,t=this.palette(level),night=level===1;
+    const n=(x,y)=>this.noise(x,y,r.seed),soil=night?'#26342e':'#42533a';
+    this.rect(0,0,w,h,soil);
+    // Uneven flagstones, recessed joints and chipped corners.
+    for(let row=0;row<h/48;row++)for(let col=-1;col<w/48;col++){
+      const x=col*48+(row%2?24:0),y=row*48,v=n(col,row),shade=t.floor[Math.floor(v*3)];
+      this.rect(x+2,y+2,44,44,night?'#1a2c27':'#344733');
+      this.rect(x+3,y+3,42,40,shade);this.rect(x+5,y+3,36,2,t.line);this.rect(x+3,y+5,2,30,t.line);
+      this.rect(x+5,y+40,38,3,night?'#243730':'#505d45');
+      this.rect(x+3,y+3,2+Math.floor(v*5),2,soil);this.rect(x+40,y+37,5,6,soil);
+      for(let k=0;k<4;k++)this.rect(x+8+n(col+k,35+row)*30,y+8+n(col,80+k+row)*25,2+k%2,1,k%2?t.line:shade);
+      if(v>.68){this.rect(x+24,y+4,2,9,soil);this.rect(x+20,y+12,6,2,soil);this.rect(x+20,y+14,2,8,soil);}
+      if(v<.25){this.rect(x+7,y+44,14,3,night?'#385241':'#637c43');this.rect(x+16,y+41,5,4,t.moss);}
+    }
+    // Organic islands soften paving without resembling solid obstacles.
+    for(let patch=0;patch<9;patch++){
+      const cx=105+n(patch,130)*(w-210),cy=105+n(patch,150)*(h-210),rx=35+n(patch,170)*64,ry=22+n(patch,180)*34;
+      for(let yy=-ry;yy<ry;yy+=5)for(let xx=-rx;xx<rx;xx+=5){
+        const v=n(xx+patch*71,yy+patch*53),edge=xx*xx/(rx*rx)+yy*yy/(ry*ry);
+        if(edge>.72+v*.35)continue;
+        const x=cx+xx,y=cy+yy;
+        if(night){
+          this.rect(x,y,6,5,v>.6?'#293d36':'#253830');
+          if(v>.8)this.rect(x,y,5,2,'#3c5248');
+          if(v<.035){this.rect(x,y-3,2,6,'#7b8065');this.rect(x-2,y-4,6,3,'#a19579');}
+        }else{
+          this.rect(x,y,6,5,['#476b3b','#52763e','#5e8243'][Math.floor(v*3)]);
+          if(v>.55){this.rect(x+1,y-3,2,6,'#78974d');this.rect(x+4,y-1,1,4,'#a2b664');}
+          if(v<.025){this.rect(x,y-3,2,5,'#3e663b');this.rect(x-2,y-5,6,2,patch%2?'#e8dba4':'#bcc5dd');this.rect(x,y-7,2,6,patch%2?'#e8dba4':'#bcc5dd');this.rect(x,y-5,2,2,'#d8ac65');}
+        }
+      }
+      if(night&&patch%3===0)for(let k=0;k<8;k++)this.rect(cx-rx*.5+n(k,patch+210)*rx,cy-ry*.3+k*3,8+n(k,patch+230)*24,1,k%3?'#3b524c':'#4b645b');
+    }
+    // Staggered ashlar stones form a continuous, textured masonry ring.
+    c.save();c.beginPath();c.rect(0,0,w,h);c.rect(64,64,w-128,h-128);c.clip('evenodd');
+    this.rect(0,0,w,h,night?'#142520':'#334736');
+    for(let row=0;row<h/24;row++)for(let col=-1;col<w/56;col++){
+      const x=col*56+(row%2?28:0),y=row*24,v=n(col+70,row+310);
+      if(x>64&&x+56<w-64&&y>=64&&y+24<=h-64)continue;
+      const shades=night?['#3b4a43','#45534a','#34473f']:['#69735f','#737c65','#5f6c59'];
+      this.rect(x+2,y+2,52,20,shades[Math.floor(v*3)]);this.rect(x+5,y+2,46,3,t.top);this.rect(x+2,y+5,3,12,t.wall);
+      this.rect(x+5,y+19,49,3,night?'#25382f':'#4a5945');this.rect(x+51,y+6,3,13,night?'#25382f':'#4a5945');
+      this.rect(x+2,y+2,3+v*5,3,night?'#24362e':'#475742');this.rect(x+48,y+17,6,5,night?'#24362e':'#475742');
+      for(let k=0;k<5;k++)this.rect(x+8+n(k+col,410+row)*38,y+7+n(k+row,440+col)*10,2+k%3,1,k%2?t.wall:t.top);
+      if(v>.55){this.rect(x+14,y+4,2,6,night?'#25352e':'#4b5946');this.rect(x+14,y+9,9,2,night?'#25352e':'#4b5946');}
+      if(v<.4){this.rect(x+7,y+17,20,5,t.moss);this.rect(x+12,y+14,9,4,night?'#3f5e42':'#839b52');}
+    }
+    c.restore();
+    this.rect(64,64,w-128,7,night?'#122620':'#304930');this.rect(64,71,w-128,5,night?'#1c3028':'#40573a');
+    this.rect(64,64,5,h-128,night?'#182b24':'#3a4e34');this.rect(w-69,64,5,h-128,night?'#182b24':'#3a4e34');this.rect(64,h-67,w-128,3,t.top);
+    // Keep the middle of every wall clear for doors and secret fissures.
+    for(let side=0;side<4;side++)for(let i=0;i<10;i++){
+      const horizontal=side<2,length=horizontal?w:h,along=85+n(i+side*19,500)*(length-170);
+      if(Math.abs(along-length/2)<85)continue;
+      c.save();if(side===0)c.translate(along,22);if(side===1){c.translate(along,h-22);c.rotate(Math.PI);}if(side===2){c.translate(22,along);c.rotate(-Math.PI/2);}if(side===3){c.translate(w-22,along);c.rotate(Math.PI/2);}
+      const extent=35+n(i+side,510)*65;
+      for(let j=0;j<extent;j+=5){const x=Math.sin(j*.09+i)*9;
+        this.rect(x,j,night?4:2,7,night?'#302d28':'#365736');
+        if(night){this.rect(x+1,j,1,6,'#786b4c');if(j%10===0){this.rect(x-5,j+2,6,2,'#62583f');this.rect(x-5,j-1,2,4,'#8b7954');this.rect(x+4,j+4,5,2,'#62583f');}}
+        else if(j%10===0){for(const sign of [-1,1]){this.rect(x+sign*5-3,j,6,5,'#426b39');this.rect(x+sign*5-2,j,4,2,'#92ac5b');this.rect(x+sign*7-1,j+2,3,2,'#6f9245');}}
+      }c.restore();
+    }
+    for(const [x,y] of [[80,80],[w-105,80],[80,h-108],[w-105,h-108]]){
+      this.rect(x-4,y+9,33,29,night?'#14251e':'#34482f');this.rect(x,y,25,29,t.wall);this.rect(x-3,y-3,31,8,t.top);this.rect(x+6,y+8,4,18,t.line);this.rect(x+14,y+8,4,18,t.dark);this.rect(x-3,y+27,31,5,t.wall);
+    }
+  }
   floor(g){
     const {room:r,level,time,player:p}=g,c=this.ctx,t=this.palette(level),w=r.width,h=r.height;
+    if(level<2)this.terrain(g);else{
     this.rect(0,0,w,h,t.dark);
     for(let y=0;y<h/32;y++)for(let x=0;x<w/32;x++){
       const n=this.noise(x,y,r.seed),wall=x<2||x>=w/32-2||y<2||y>=h/32-2;
@@ -42,6 +125,7 @@ class ForestRenderer {
       const x=85+this.noise(i,72,r.seed)*(w-170),side=i%2,y=side?h-75:64;
       for(let j=0;j<4+i%4;j++){this.rect(x+Math.sin(j+i)*9,y+(side?-j:j)*8,5,10,t.moss);if(j%2)this.rect(x+Math.sin(j+i)*9-5,y+(side?-j:j)*8,14,4,t.top);}
       if(i%3===0){this.rect(x,side?h-122:102,22,11,t.wall);this.rect(x+3,side?h-124:100,16,4,t.top);}
+    }
     }
     if(level===0){c.save();c.globalAlpha=.06;c.fillStyle='#ffffb0';for(let i=0;i<3;i++){c.beginPath();c.moveTo(170+i*240,64);c.lineTo(235+i*240,64);c.lineTo(400+i*200,h-64);c.lineTo(265+i*200,h-64);c.fill();}c.restore();}
     for(const [dx,dy,x,y,vertical] of [[-1,0,32,h/2-40,true],[1,0,w-80,h/2-40,true],[0,-1,w/2-40,32,false],[0,1,w/2-40,h-80,false]]){
