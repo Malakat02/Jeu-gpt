@@ -47,6 +47,8 @@ Les plans sont fixes, tandis que les rencontres et les offres de trésors change
 
 Les trois étages traversent des ruines forestières : pierres moussues et lumière au premier, végétation sombre dans le dédale, puis arbre-mère corrompu au centre du sanctuaire. L’arbre est un décor traversable, dessiné derrière les personnages.
 
+Le sanctuaire conserve ses pierres blanches, éclairées par une lumière chaude et douce de fin de journée. Les entrées des deux premiers boss possèdent des portails monumentaux, ornés de crânes, avec des vantaux scellés bien distincts du passage ouvert. Leur clé est une grande clé à tête de mort. Les gardiens arborent des matières plus détaillées et des mouvements secondaires : racines et feuillage de Morne-Racine, manteau et mains du Veilleur, armure articulée et ailes de seconde phase de Voragh.
+
 Morne-Racine alterne graines en éventail, racines et charge lente. Le Veilleur chasse le héros avec des salves ciblées, des ruées et une traînée d’épines. Voragh attaque avec des éruptions, des couronnes de projectiles et des racines qui balayent l’arène ; sa deuxième phase accélère les enchaînements et densifie les attaques. Les préparations sont silencieuses : les créatures se tassent, gonflent, replient leurs ailes ou prennent appui, et chaque attaque de boss possède sa propre posture. Aucun texte ni tracé ne révèle les tirs ou les charges ; les zones d’effet des boss restent visibles au sol. Les tirs et les charges ont des bruitages de départ discrets et distincts.
 
 Chaque ennemi ordinaire a 38 % de chances de laisser 1 rubis (parfois 2) et, indépendamment, 12 % de chances de laisser un cœur. Une salle gagnée rapporte 1 rubis. Les boutiques restent des choix de dépense limités.
@@ -82,6 +84,8 @@ La mort remet à zéro l’arme, les reliques et le don. Seuls les compteurs de 
 
 ## Audio et fichiers
 
+L’interface adapte les cœurs, les rubis et la carte à la surface de jeu. Dans **Pause → Paramètres** (ou Retour arrière sur PC), le curseur **Taille de l’interface** permet un ajustement de 80 à 150 %, mémorisé sur cet appareil. Le bouton de réinitialisation rétablit l’échelle automatique. La carte utilise un rendu haute définition ; les quatre créatures possèdent des contours fins et des membres animés indépendamment.
+
 Six arrangements chiptune (forêt, dédale, sanctuaire, boutique, boss et thème exclusif de Voragh) et 23 bruitages, synthétisés localement sans téléchargement audio. La musique est davantage présente dans le mixage.
 
 - `index.html`, `style.css` : interface et affichage des cœurs.
@@ -92,6 +96,7 @@ Six arrangements chiptune (forêt, dédale, sanctuaire, boutique, boss et thème
 - `touch-layout.js` : déplacement et mémorisation des boutons tactiles.
 - `mobile-view.js`, `mobile.css` : commandes en surimpression, carte et plein écran mobile.
 - `renderer.js` : pixel art, salles, armes, boss et carte.
+- `display.js`, `display.css` : adaptation et préférence de taille de l’interface.
 - `audio.js` : musique, effets, pause et préférences sonores.
 
 ## Vérifications
@@ -109,6 +114,7 @@ node test-generation.cjs
 node test-audio.cjs
 node test-touch.cjs
 node test-mobile-view.cjs
+node test-display.cjs
 node test-touch-layout.cjs
 ```
 

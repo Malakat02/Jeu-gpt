@@ -13,6 +13,7 @@ class ForestMobileView {
     this.wrap.appendChild(this.mapPanel);
     get('mobile-map-toggle').onclick=()=>{if(this.mapOpen){this.closeMap();return;}if(!onMapOpen())return;this.mapOpen=true;onReset();this.mapPanel.hidden=false;this.panel.classList.add('map-open');get('mobile-map-toggle').setAttribute('aria-expanded','true');get('mobile-map-floor').textContent=get('floor-label').textContent;
       const canvas=get('mobile-map'),context=canvas.getContext('2d');
+      canvas.width=get('map').width||260;canvas.height=get('map').height||155;
       // Transparent source pixels must replace the previous floor, not overlay it.
       context.clearRect(0,0,canvas.width,canvas.height);
       context.drawImage(get('map'),0,0);

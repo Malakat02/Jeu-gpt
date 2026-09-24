@@ -66,6 +66,7 @@
   function dashCooldown(){return Math.max(.25,g.player.dashCooldown);}
   function weaponCooldown(){return Math.max(.12,C.weapons[g.player.weapon].cooldown/g.player.attackRate);}
   const number=n=>Number(n.toFixed(2)).toString();
+  const keyIcon='<svg class="boss-key-icon" width="20" height="28" viewBox="0 0 24 36" role="img" aria-label="Clé du boss" style="vertical-align:middle;image-rendering:pixelated;overflow:visible" shape-rendering="crispEdges"><path d="M9 14h6v20H9zM14 25h8v4h-3v5h-4z" fill="#d9b365" stroke="#463334" stroke-width="1"/><path d="M5 2h14v3h3v10h-5v5H7v-5H2V5h3z" fill="#ead8ae" stroke="#463334" stroke-width="2"/><path d="M5 7h5v5H5zM14 7h5v5h-5zM11 12h2v3h-2zM9 17v3M14 17v3" fill="#463334" stroke="#463334"/></svg>';
   function updateHUD(){
     const p=g.player;if(!p||!g.room)return;
     $('health').innerHTML=Array.from({length:p.max},(_,i)=>{const fill=clamp(p.hp-i,0,1)*100;return `<span class="heart ${p.wisdom?'armored':''}" style="--fill:${fill}%" title="${number(Math.min(1,Math.max(0,p.hp-i)))} cœur">♥</span>`;}).join('');
@@ -79,7 +80,7 @@
     $('explored').textContent=`${g.rooms.filter(r=>r.visited).length} / ${g.rooms.length}`;$('relic-count').textContent=p.items.length;
     $('relics').innerHTML=p.items.length?p.items.map(r=>`<div class="relic"><span>${r.icon}</span><div>${r.name}<small>${r.desc}</small></div></div>`).join(''):'<p class="empty">Les grandes légendes<br>commencent les mains vides.</p>';
     $('weapon-help').textContent=p.weapon==='master'?'Maintenir + relâcher : attaque circulaire. Vie pleine : rayon.':p.weapon==='flail'?'Le boulet inflige ses dégâts en ligne droite.':p.weapon==='greatsword'?'Grande portée, cadence modérée.':'La lame visible définit la zone de frappe.';
-    $('touch-status').innerHTML=`<div class="mobile-hearts">${$('health').innerHTML}</div><span class="mobile-wallet">◆ ${p.money} rubis · ⚿ ${p.key}</span>`;renderer.drawMap(g);
+    $('touch-status').innerHTML=`<div class="mobile-hearts">${$('health').innerHTML}</div><span class="mobile-wallet">◆ ${p.money} rubis · ${keyIcon} ${p.key}</span>`;renderer.drawMap(g);
   }
   function blocked(x,y,radius=12){
     const r=g.room;return x<48+radius||x>r.width-48-radius||y<64+radius||y>r.height-64-radius||r.objects.some(o=>x+radius>o.x&&x-radius<o.x+o.w&&y+radius>o.y&&y-radius<o.y+o.h);
@@ -164,6 +165,10 @@
     if(g.mode==='menu'){toggleMenu();return;}
     if(g.mode==='play'){g.mode='pause';soundtrack.setPaused(true);clearInput();$('overlay').innerHTML='<div class="intro-symbol">Ⅱ</div><div class="eyebrow">LE TEMPS SUSPEND SON VOL</div><h2>Un instant de répit.</h2><p>Votre aventure vous attend.</p><button class="primary" id="resume">REPRENDRE →</button><button class="mobile-layout-pause" id="pause-layout">⚙ Position des boutons</button>';$('overlay').classList.remove('hidden');$('resume').onclick=pause;$('pause-layout').onclick=()=>touchLayout?.open();}
     else if(g.mode==='pause'){g.mode='play';soundtrack.setPaused(false);soundtrack.unlock();$('overlay').classList.add('hidden');canvas.focus();}
+    if(g.mode==='pause'){
+      $('overlay').insertAdjacentHTML?.('beforeend','<button class="pause-settings" id="pause-settings">PARAMÈTRES</button>');
+      $('pause-settings').onclick=()=>{menuPage='settings';toggleMenu();};
+    }
   }
   function toggleMenu(){
     if(g.mode==='menu'){g.mode=menuPreviousMode;menuPreviousMode=null;$('game-menu').classList.add('hidden');clearInput();soundtrack.setPaused(g.mode!=='play');canvas.focus();return;}
@@ -179,6 +184,11 @@
     if(menuPage==='settings'){
       $('menu-content').innerHTML=`<h3>Paramètres</h3><div class="menu-settings"><button id="setting-fullscreen">Plein écran : ${mobileView?.immersive?'OUI':'NON'}</button><button id="setting-music">Musique : ${soundtrack.musicEnabled?'OUI':'NON'}</button><button id="setting-effects">Bruitages : ${soundtrack.effectsEnabled?'OUI':'NON'}</button></div><p>Tab : carte · Retour arrière : ce menu · Échap : pause</p>`;
       $('setting-fullscreen').onclick=async()=>{await mobileView?.toggleFullscreen();if(g.mode==='menu')renderMenu();};
+      if(globalThis.ForestDisplay){
+        $('menu-content').insertAdjacentHTML('beforeend',`<label class="display-setting" for="setting-ui-scale">Taille de l’interface · <output id="ui-scale-value">${Math.round(ForestDisplay.scale*100)} %</output><input id="setting-ui-scale" type="range" min="80" max="150" step="5" value="${Math.round(ForestDisplay.scale*100)}"></label><button id="setting-ui-reset">Rétablir la taille automatique</button><p class="display-note">La taille s’adapte automatiquement à la surface de jeu. Ce réglage ajuste les cœurs, les rubis et la carte selon votre confort. Il reste mémorisé sur cet appareil.</p>`);
+        $('setting-ui-scale').oninput=e=>{ForestDisplay.apply(e.target.value/100);$('ui-scale-value').textContent=`${Math.round(ForestDisplay.scale*100)} %`;};
+        $('setting-ui-reset').onclick=()=>{ForestDisplay.apply(1);renderMenu();};
+      }
       for(const channel of ['music','effects'])$('setting-'+channel).onclick=()=>{soundtrack.setChannel(channel,!soundtrack[channel+'Enabled']);syncSoundButton();renderMenu();};
     }else{
       const stats=[['Cœurs',`${number(p.hp)} / ${p.max}`],['Rubis',p.money],['Dégâts de l’arme',number(p.damage*w.mult*p.power)],['Intervalle d’attaque',number(weaponCooldown())+' s'],['Portée',w.reach],['Vitesse',Math.round(Math.min(340,p.speed))],['Recharge esquive',number(dashCooldown())+' s'],['Durée esquive',number(Math.min(.3,p.dashDuration))+' s'],['Dégâts boomerang',number(p.boomDamage*p.power)],['Recharge boomerang',number(Math.max(.45,p.boomCooldown))+' s'],['Soin par salle',number(p.regen)],['Dégâts reçus',p.wisdom?'50 %':'100 %'],['Résurrections restantes',p.revive]];
@@ -318,6 +328,7 @@
   if(document.createElement)touchLayout=new ForestTouchLayout({onReset:clearInput,onOpen:()=>{if(!['play','pause','title','dead','win'].includes(g.mode))return false;layoutPreviousMode=g.mode;g.mode='layout';soundtrack.setPaused(true);return true;},onClose:()=>{g.mode=layoutPreviousMode;layoutPreviousMode=null;soundtrack.setPaused(g.mode!=='play');}});
   if(document.createElement){const menu=document.createElement('div');menu.id='game-menu';menu.className='game-menu hidden';menu.setAttribute('role','dialog');menu.setAttribute('aria-label','Inventaire et paramètres');$('game-wrap').appendChild(menu);}
   if(mobileView)mobileView.onViewport=()=>{touchLayout?.apply();if(g.mode==='menu')renderMenu();};
+  const keyLabel=document.querySelector?.('.stats .gold');if(keyLabel)keyLabel.innerHTML=keyIcon;
   g.player=makePlayer();g.rooms=C.makeRooms(0);g.room=g.rooms[0];g.room.visited=true;g.room.enemies=[];syncSoundButton();updateHUD();
   if(legacy.wins||legacy.deaths)$('legacy').textContent=`Héritage : ${Math.min(8,(legacy.deaths+legacy.wins)*2)} rubis · ${legacy.wins} victoires · ${legacy.deaths} chutes`;requestAnimationFrame(frame);
 })();

@@ -1,0 +1,18 @@
+:root{--ui-scale:1}
+.canvas-wrap{container-type:inline-size}
+/* Scale from the actual game surface, including fullscreen letterboxing. */
+body .touch-status .mobile-hearts,body.touch-device .touch-status .mobile-hearts{font-size:calc(clamp(16px,2.6cqw,40px)*var(--ui-scale));gap:calc(3px*var(--ui-scale));line-height:1.15}
+body .touch-status .mobile-wallet,body.touch-device .touch-status .mobile-wallet{font-size:calc(clamp(11px,1.5cqw,24px)*var(--ui-scale));margin-top:.35em}
+.mobile-wallet svg{width:1.25em;height:1.75em;vertical-align:middle}
+body .touch-status{max-width:48%}
+body .mobile-map-panel canvas{width:min(calc(65%*var(--ui-scale)),90%);max-height:60%;height:auto;object-fit:contain;image-rendering:auto;min-height:0;flex-shrink:1}
+body .mobile-map-panel h2{font-size:calc(clamp(16px,2.2cqw,30px)*var(--ui-scale))}
+body .mobile-map-panel p{font-size:calc(clamp(10px,1.3cqw,19px)*var(--ui-scale))}
+body .mobile-map-panel button{font-size:calc(clamp(10px,1.3cqw,18px)*var(--ui-scale));flex-shrink:0}
+aside .health{font-size:calc(clamp(20px,2vw,30px)*var(--ui-scale))}
+aside .stats b{font-size:calc(clamp(18px,1.7vw,26px)*var(--ui-scale))}
+aside #map{width:100%;height:auto;image-rendering:auto}
+.display-setting{display:flex;flex-direction:column;gap:10px;margin:20px 0;max-width:420px;font-size:14px}
+.display-setting input{width:100%;accent-color:#c5de98;min-height:30px}
+.game-menu .display-note{max-width:55ch}
+.pause-settings{background:#293d2b;color:#e5eccc;border:1px solid #88976d;border-radius:4px;min-height:36px;margin:8px;padding:8px 14px;font-size:12px;cursor:pointer}
