@@ -1,4 +1,4 @@
-// Original procedural chiptune music and effects. No audio downloads required.
+// Local music tracks and procedural sound effects.
 class ForestAudio {
   constructor() {
     this.enabled = true;
@@ -8,12 +8,16 @@ class ForestAudio {
     this.context = null;
     this.paused = false;
     this.theme = '';
-    this.step = 0;
-    this.nextNote = 0;
+    this.musicVolume=.5;this.effectsVolume=.5;
+    for(const channel of ['music','effects'])try{const saved=localStorage.getItem('forest-'+channel+'-volume');if(saved!==null&&saved!==undefined&&Number.isFinite(Number(saved)))this[channel+'Volume']=Math.max(0,Math.min(1,Number(saved)));}catch{}
+    this.lastMusicTime=null;
     this.lastEffect = new Map();
+    this.tracks=new Map();this.activeTrack=null;this.musicPlaying=false;this.unlocked=false;
+    this.trackFiles={exploration:'Exploration.mp3',battle:'Battle.mp3',shop:'Shop.mp3',boss:'Boss.mp3',finalBoss:'Final Boss.mp3'};
   }
 
   unlock() {
+    this.unlocked=true;for(const track of this.tracks.values())track._blocked=false;this.syncTrack();
     if (!this.enabled) return;
     try {
       if (!this.context) {
@@ -21,15 +25,12 @@ class ForestAudio {
         if (!Audio) return;
         this.context = new Audio();
         this.master = this.context.createGain();
-        this.music = this.context.createGain();
         this.effects = this.context.createGain();
         const limiter = this.context.createDynamicsCompressor();
         limiter.threshold.value = -14;
         limiter.ratio.value = 8;
         this.master.gain.value = this.paused ? 0 : .65;
-        this.music.gain.value = this.musicEnabled ? .62 : 0;
-        this.effects.gain.value = this.effectsEnabled ? .8 : 0;
-        this.music.connect(this.master);
+        this.effects.gain.value = this.effectsEnabled ? this.effectsVolume*2 : 0;
         this.effects.connect(this.master);
         this.master.connect(limiter);
         limiter.connect(this.context.destination);
@@ -48,26 +49,68 @@ class ForestAudio {
     try { localStorage.setItem('forest-audio', enabled ? 'on' : 'off'); } catch {}
     if (enabled) this.unlock();
     this.setPaused(this.paused);
-    this.nextNote = 0;
   }
   saveChannels(){
+    this.syncTrack();
     try{localStorage.setItem('forest-music',this.musicEnabled?'on':'off');localStorage.setItem('forest-effects',this.effectsEnabled?'on':'off');}catch{}
-    if(this.context){this.music.gain.setTargetAtTime(this.musicEnabled?.62:0,this.context.currentTime,.015);this.effects.gain.setTargetAtTime(this.effectsEnabled?.8:0,this.context.currentTime,.015);}
+    if(this.context)this.effects.gain.setTargetAtTime(this.effectsEnabled?this.effectsVolume*2:0,this.context.currentTime,.015);
   }
   setChannel(channel,value){
     if(!['music','effects'].includes(channel))return;
     this[channel+'Enabled']=value;this.enabled=this.musicEnabled||this.effectsEnabled;
     try{localStorage.setItem('forest-audio',this.enabled?'on':'off');}catch{}
-    if(this.enabled)this.unlock();this.saveChannels();this.setPaused(this.paused);this.nextNote=0;
+    if(this.enabled)this.unlock();this.saveChannels();this.setPaused(this.paused);
   }
 
   setPaused(paused) {
     this.paused = paused;
+    this.syncTrack();
     if (!this.context) return;
     const now = this.context.currentTime;
     this.master.gain.cancelScheduledValues(now);
     this.master.gain.setTargetAtTime(this.enabled && !paused ? .65 : 0, now, .015);
-    if (paused) this.nextNote = 0;
+  }
+
+  setVolume(channel,value){
+    if(!['music','effects'].includes(channel)||!Number.isFinite(Number(value)))return;
+    this[channel+'Volume']=Math.max(0,Math.min(1,Number(value)));
+    try{localStorage.setItem('forest-'+channel+'-volume',String(this[channel+'Volume']));}catch{}
+    this.saveChannels();
+  }
+  syncTrack(dt=0){
+    const audible=this.unlocked&&this.enabled&&this.musicEnabled&&!this.paused&&this.musicPlaying;
+    for(const track of this.tracks.values()){
+      if(!audible){track._generation++;track.pause();track._started=false;track._mix=0;track.volume=0;continue;}
+      const target=track===this.activeTrack?1:0;
+      if(target&&!track._started&&!track._blocked){
+        track.volume=track._mix*this.musicVolume*.56;track._started=true;
+        const generation=++track._generation;
+        track.play()?.catch(error=>{if(generation===track._generation){track._started=false;track._blocked=error?.name!=='AbortError';}});
+      }
+      // A 0.9-second crossfade, continuous even if rooms change mid-transition.
+      const delta=Math.min(dt/.9,Math.abs(target-track._mix));
+      track._mix+=Math.sign(target-track._mix)*delta;
+      track.volume=Math.max(0,Math.min(1,track._mix*this.musicVolume*.56));
+      if(!target&&track._mix===0&&track._started){track._generation++;track.pause();track._started=false;}
+    }
+  }
+  updateTrack(playing,theme,dt){
+    this.musicPlaying=playing;
+    if(theme!==this.theme){
+      this.theme=theme;
+      if(!this.tracks.has(theme)){
+        const track=new window.Audio('Musics/'+encodeURIComponent(this.trackFiles[theme]||this.trackFiles.exploration));
+        track.loop=true;track.preload='metadata';track.volume=0;
+        if(theme==='finalBoss'){
+          const seekIntro=()=>{try{track.currentTime=20;}catch{}};
+          track.addEventListener('loadedmetadata',seekIntro,{once:true});seekIntro();
+        }
+        track._mix=0;track._started=false;track._blocked=false;track._generation=0;
+        this.tracks.set(theme,track);
+      }
+      this.activeTrack=this.tracks.get(theme);
+    }
+    this.syncTrack(dt);
   }
 
   tone(freq, duration, wave = 'triangle', volume = .08, delay = 0, endFreq = freq, bus = this.effects) {
@@ -135,36 +178,8 @@ class ForestAudio {
   }
 
   update(active, theme) {
-    if (!this.context) return;
-    const now = this.context.currentTime;
-    this.music.gain.setTargetAtTime(active && this.musicEnabled ? .62 : 0, now, .04);
-    if (!active || !this.enabled || !this.musicEnabled || this.paused || this.context.state !== 'running') { this.nextNote = 0; return; }
-    if (theme !== this.theme) { this.theme = theme; this.step = 0; this.nextNote = now; }
-    if (this.nextNote > now + .06) return;
-    const finale = theme === 'finalBoss', boss = theme === 'boss', shop = theme === 'shop', crypt = theme === 'crypt', eclipse = theme === 'eclipse';
-    const lead = finale ? [62,69,74,0,77,76,74,69,70,65,74,77,81,77,76,73,62,65,69,74,73,69,65,61,58,65,70,74,73,69,61,0] :
-      boss ? [57, 0, 60, 57, 63, 0, 62, 60, 57, 0, 55, 57, 60, 62, 63, 60] :
-      shop ? [72, 76, 79, 0, 76, 74, 72, 0, 69, 72, 76, 0, 74, 71, 67, 0] :
-      crypt ? [57, 0, 0, 64, 60, 0, 59, 0, 53, 0, 60, 0, 59, 0, 56, 0] :
-      eclipse ? [62, 0, 69, 0, 65, 0, 72, 0, 70, 0, 65, 0, 64, 0, 61, 0] :
-      [69, 0, 76, 0, 74, 72, 0, 67, 69, 0, 72, 76, 74, 0, 71, 0, 65, 0, 72, 0, 76, 74, 72, 0, 67, 0, 71, 74, 72, 0, 69, 0];
-    const interval = finale ? .205 : boss ? .24 : shop ? .28 : crypt ? .42 : eclipse ? .38 : .32;
-    const delay = Math.max(0, this.nextNote - now), note = lead[this.step % lead.length];
-    const hz = midi => 440 * 2 ** ((midi - 69) / 12);
-    if (note) this.tone(hz(note), interval * 1.8, boss || finale ? 'square' : 'triangle', boss || finale ? .045 : .075, delay, hz(note), this.music);
-    if (finale) {
-      const root = [38,34,43,37][Math.floor(this.step / 8) % 4];
-      const harmony = root + [12,19,24,19][this.step % 4];
-      this.tone(hz(harmony), interval * .85, 'triangle', .045, delay, hz(harmony), this.music);
-      if (this.step % 4 === 0) this.tone(85, .13, 'sine', .09, delay, 32, this.music);
-      if (this.step % 4 === 2) this.tone(180, .065, 'triangle', .025, delay, 70, this.music);
-    }
-    if (this.step % 4 === 0) {
-      const bass = (finale ? [38,34,43,37] : boss ? [33, 33, 36, 31] : shop ? [48, 45, 41, 43] : crypt ? [33, 29, 36, 32] : eclipse ? [38, 34, 41, 37] : [45, 41, 48, 43])[Math.floor(this.step / 8) % 4];
-      this.tone(hz(bass), interval * 3.6, 'triangle', .1, delay, hz(bass), this.music);
-      this.tone(hz(bass + 19), interval * 3, 'sine', .028, delay, hz(bass + 19), this.music);
-    }
-    this.step++;
-    this.nextNote = Math.max(now, this.nextNote) + interval;
+    const now=Date.now()/1000,dt=this.lastMusicTime===null?0:Math.max(0,Math.min(.1,now-this.lastMusicTime));
+    this.lastMusicTime=now;
+    if(typeof window.Audio==='function')this.updateTrack(active,theme,dt);
   }
 }

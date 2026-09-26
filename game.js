@@ -5,6 +5,7 @@
   const keys=new Set(),TAU=Math.PI*2,rand=(a,b)=>a+Math.random()*(b-a),dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
   let last=0,pointerHeld=false,pendingChoice=null,touchControls=null,touchDash=false,mobileView=null,touchLayout=null,layoutPreviousMode=null;
   let menuPreviousMode=null,menuPage='inventory';
+  let cheatBuffer='',cheatLastKey=0;
   let legacy={deaths:0,wins:0};
   try{const saved=JSON.parse(localStorage.getItem('forest-echoes'));if(saved&&Number.isFinite(saved.deaths)&&Number.isFinite(saved.wins))legacy=saved;}catch{}
   const g={mode:'title',level:0,rooms:[],room:null,player:null,particles:[],shots:[],beams:[],hazards:[],drops:[],boomerang:null,attack:null,time:0,shake:0,toastTime:0,runSeed:0,kills:0,clears:0,transition:0,neighbor,connected,secretEntrance,dashCooldown};
@@ -16,6 +17,7 @@
   function clearInput(){touchControls?.reset();touchDash=false;keys.clear();pointerHeld=false;if(g.player){g.player.holding=false;g.player.holdTime=0;g.player.chargeSound=false;}}
   function clearRoomEffects(){g.shots=[];g.beams=[];g.hazards=[];g.boomerang=null;g.attack=null;g.particles=[];}
   function newRun(){
+    g.cheat=false;cheatBuffer='';
     mobileView?.closeMap(false);soundtrack.setPaused(false);soundtrack.unlock();clearInput();g.player=makePlayer();g.time=0;g.kills=0;g.clears=0;g.shake=0;g.runSeed=rand(0,99999);g.mode='play';pendingChoice=null;
     loadFloor(0);$('overlay').classList.add('hidden');canvas.focus();toast('Trois étages vous attendent. Retrouvez la clé de lune !');
   }
@@ -113,7 +115,7 @@
     if(e.type!=='boss'){const a=Math.atan2(e.y-g.player.y,e.x-g.player.x);move(e,Math.cos(a)*9,Math.sin(a)*9);}
   }
   function hurt(amount=1){
-    const p=g.player;if(g.mode!=='play'||p.inv>0||p.dash>0)return;
+    const p=g.player;if(g.mode!=='play'||g.cheat||p.inv>0||p.dash>0)return;
     p.hp=Math.max(0,p.hp-amount*(p.wisdom?.5:1));p.inv=1.2;g.shake=9;burst(p.x,p.y,'#ef9c83');sfx('hurt');
     if(p.hp<=0){
       if(p.revive>0){p.revive--;p.hp=p.max/2;p.inv=3;g.shots=[];g.hazards=[];burst(p.x,p.y,'#ecf4b1',40);toast('Le Courage vous relève · moitié de vos cœurs restaurée');sfx('heal');}
@@ -184,6 +186,13 @@
     if(menuPage==='settings'){
       $('menu-content').innerHTML=`<h3>Paramètres</h3><div class="menu-settings"><button id="setting-fullscreen">Plein écran : ${mobileView?.immersive?'OUI':'NON'}</button><button id="setting-music">Musique : ${soundtrack.musicEnabled?'OUI':'NON'}</button><button id="setting-effects">Bruitages : ${soundtrack.effectsEnabled?'OUI':'NON'}</button></div><p>Tab : carte · Retour arrière : ce menu · Échap : pause</p>`;
       $('setting-fullscreen').onclick=async()=>{await mobileView?.toggleFullscreen();if(g.mode==='menu')renderMenu();};
+      const volumes=document.createElement?.('div');
+      if(volumes){
+        volumes.className='audio-volumes';
+        volumes.innerHTML=['music','effects'].map(channel=>`<label class="display-setting" for="volume-${channel}">${channel==='music'?'Volume de la musique':'Volume des bruitages'} <output id="volume-${channel}-value">${Math.round(soundtrack[channel+'Volume']*100)} %</output><input id="volume-${channel}" type="range" min="0" max="100" step="1" value="${Math.round(soundtrack[channel+'Volume']*100)}"></label>`).join('');
+        $('menu-content').appendChild(volumes);
+        for(const channel of ['music','effects'])$('volume-'+channel).oninput=e=>{soundtrack.setVolume(channel,Number(e.target.value)/100);$('volume-'+channel+'-value').textContent=`${Math.round(soundtrack[channel+'Volume']*100)} %`;};
+      }
       if(globalThis.ForestDisplay){
         $('menu-content').insertAdjacentHTML('beforeend',`<label class="display-setting" for="setting-ui-scale">Taille de l’interface · <output id="ui-scale-value">${Math.round(ForestDisplay.scale*100)} %</output><input id="setting-ui-scale" type="range" min="80" max="150" step="5" value="${Math.round(ForestDisplay.scale*100)}"></label><button id="setting-ui-reset">Rétablir la taille automatique</button><p class="display-note">La taille s’adapte automatiquement à la surface de jeu. Ce réglage ajuste les cœurs, les rubis et la carte selon votre confort. Il reste mémorisé sur cet appareil.</p>`);
         $('setting-ui-scale').oninput=e=>{ForestDisplay.apply(e.target.value/100);$('ui-scale-value').textContent=`${Math.round(ForestDisplay.scale*100)} %`;};
@@ -284,14 +293,14 @@
     }g.drops=g.drops.filter(d=>!d.taken);g.room.drops=g.drops;
   }
   function tryExit(dx,dy){
-    const p=g.player,r=g.room;if(!r.clear||g.transition>0)return;let next,from;
+    const p=g.player,r=g.room;if((!r.clear&&!g.cheat)||g.transition>0)return;let next,from;
     if(p.x<77&&Math.abs(p.y-r.height/2)<47&&dx<0){next=neighbor(-1,0);from='right';}if(p.x>r.width-77&&Math.abs(p.y-r.height/2)<47&&dx>0){next=neighbor(1,0);from='left';}
     if(p.y<94&&Math.abs(p.x-r.width/2)<47&&dy<0){next=neighbor(0,-1);from='bottom';}if(p.y>r.height-94&&Math.abs(p.x-r.width/2)<47&&dy>0){next=neighbor(0,1);from='top';}
-    if(!next)return;if(next.type==='boss'&&!next.visited&&C.floors[g.level].key&&!p.key){toast('La porte réclame la clé de cet étage. Explorez les autres passages.');g.transition=1;return;}
-    if(next.type==='boss'&&!next.visited&&C.floors[g.level].key)p.key--;r.drops=g.drops;enter(next,from);
+    if(!next)return;if(!g.cheat&&next.type==='boss'&&!next.visited&&C.floors[g.level].key&&!p.key){toast('La porte réclame la clé de cet étage. Explorez les autres passages.');g.transition=1;return;}
+    if(!g.cheat&&next.type==='boss'&&!next.visited&&C.floors[g.level].key)p.key--;r.drops=g.drops;enter(next,from);
   }
   function updateHint(){
-    const r=g.room;let hint=r.clear?'Empruntez une porte pour explorer':'Éliminez les ennemis pour ouvrir les portes';
+    const r=g.room;let hint=g.cheat?'MALAKAT · Invincible · portes ouvertes':r.clear?'Empruntez une porte pour explorer':'Éliminez les ennemis pour ouvrir les portes';
     if(r.type==='treasure'&&!r.opened)hint='E près du coffre · une relique au choix';if(r.type==='shop')hint='Approchez d’un article · E pour acheter';if(r.type==='ante'&&!r.opened)hint='E près de la fontaine · soin complet';if(r.type==='boss'&&r.clear)hint=r.rewardTaken?'E près de l’escalier · étage suivant':'E près du trésor du boss';
     $('touch-action-label').textContent=canTouchInteract()?'INTERAGIR':'ATTAQUER';$('hint').textContent=touchControls?.enabled?hint.replace(/E près/g,'A près'):hint;$('timer').textContent=`${String(Math.floor(g.time/60)).padStart(2,'0')}:${String(Math.floor(g.time%60)).padStart(2,'0')}`;
   }
@@ -309,9 +318,16 @@
     for(const particle of g.particles){particle.x+=particle.vx*dt;particle.y+=particle.vy*dt;particle.life-=dt;}g.particles=g.particles.filter(p=>p.life>0);g.shake=Math.max(0,g.shake-dt*35);
     if(g.toastTime>0){g.toastTime-=dt;if(g.toastTime<=0)$('toast').style.opacity=0;}updateHint();
   }
-  function musicTheme(){return g.room.type==='boss'&&!g.room.clear?(g.level===2?'finalBoss':'boss'):g.room.type==='shop'?'shop':g.level===1?'crypt':g.level===2?'eclipse':'forest';}
+  function musicTheme(){return g.room.type==='boss'&&!g.room.clear?(g.level===2?'finalBoss':'boss'):g.room.type==='shop'?'shop':!g.room.clear?'battle':'exploration';}
+  function cheatKey(event){
+    if(g.mode!=='play'||event.ctrlKey||event.metaKey||event.altKey||/INPUT|TEXTAREA|SELECT/.test(event.target?.tagName||'')||event.target?.isContentEditable){cheatBuffer='';return;}
+    if(event.repeat||event.key.length!==1)return;
+    const now=Date.now();if(now-cheatLastKey>3000)cheatBuffer='';cheatLastKey=now;
+    cheatBuffer=(cheatBuffer+event.key.toLowerCase()).slice(-7);
+    if(cheatBuffer==='malakat'){g.cheat=!g.cheat;cheatBuffer='';clearInput();toast(g.cheat?'MALAKAT activé · Invincible · toutes les portes ouvertes':'MALAKAT désactivé');}
+  }
   function frame(timestamp){const dt=Math.min((timestamp-last)/1000,.035);last=timestamp;document.body.classList[g.mode==='play'?'add':'remove']('touch-playing');soundtrack.update(g.mode==='play',musicTheme());update(dt);renderer.draw(g);requestAnimationFrame(frame);}
-  document.addEventListener('keydown',event=>{const key=event.key.toLowerCase();if(key==='backspace'){event.preventDefault();if(!event.repeat)toggleMenu();return;}if(key==='tab'&&['play','map'].includes(g.mode)){event.preventDefault();if(!event.repeat)mobileView?.toggleMap();return;}if(g.mode==='menu'){if(key==='escape'){event.preventDefault();toggleMenu();}return;}if(['arrowup','arrowdown','arrowleft','arrowright',' ','shift'].includes(key))event.preventDefault();keys.add(key);if(event.repeat)return;if(key==='escape')pause();if(key==='e')interact();if(key==='enter'&&g.mode==='title')newRun();if(key===' '||key==='j')beginAttack();});
+  document.addEventListener('keydown',event=>{cheatKey(event);const key=event.key.toLowerCase();if(key==='backspace'){event.preventDefault();if(!event.repeat)toggleMenu();return;}if(key==='tab'&&['play','map'].includes(g.mode)){event.preventDefault();if(!event.repeat)mobileView?.toggleMap();return;}if(g.mode==='menu'){if(key==='escape'){event.preventDefault();toggleMenu();}return;}if(['arrowup','arrowdown','arrowleft','arrowright',' ','shift'].includes(key))event.preventDefault();keys.add(key);if(event.repeat)return;if(key==='escape')pause();if(key==='e')interact();if(key==='enter'&&g.mode==='title')newRun();if(key===' '||key==='j')beginAttack();});
   document.addEventListener('keyup',event=>{keys.delete(event.key.toLowerCase());if(!keys.has(' ')&&!keys.has('j')&&!pointerHeld&&!touchControls?.active)releaseAttack();});
   function unfocus(){clearInput();if(g.mode==='play')pause();}
   window.addEventListener('blur',unfocus);document.addEventListener('visibilitychange',()=>{if(document.hidden)unfocus();});
