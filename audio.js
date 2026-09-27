@@ -27,10 +27,10 @@ class ForestAudio {
         this.master = this.context.createGain();
         this.effects = this.context.createGain();
         const limiter = this.context.createDynamicsCompressor();
-        limiter.threshold.value = -14;
-        limiter.ratio.value = 8;
+        limiter.threshold.value = -6;
+        limiter.ratio.value = 4;
         this.master.gain.value = this.paused ? 0 : .65;
-        this.effects.gain.value = this.effectsEnabled ? this.effectsVolume*2 : 0;
+        this.effects.gain.value = this.effectsEnabled ? this.effectsVolume*5 : 0;
         this.effects.connect(this.master);
         this.master.connect(limiter);
         limiter.connect(this.context.destination);
@@ -53,7 +53,7 @@ class ForestAudio {
   saveChannels(){
     this.syncTrack();
     try{localStorage.setItem('forest-music',this.musicEnabled?'on':'off');localStorage.setItem('forest-effects',this.effectsEnabled?'on':'off');}catch{}
-    if(this.context)this.effects.gain.setTargetAtTime(this.effectsEnabled?this.effectsVolume*2:0,this.context.currentTime,.015);
+    if(this.context)this.effects.gain.setTargetAtTime(this.effectsEnabled?this.effectsVolume*5:0,this.context.currentTime,.015);
   }
   setChannel(channel,value){
     if(!['music','effects'].includes(channel))return;

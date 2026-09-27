@@ -19,9 +19,21 @@ function descend(){Object.assign(g.player,{x:g.room.width/2,y:g.room.height*.72}
 function target(x,y){return {...t.enemy('slime',x,y),hp:100,max:100,radius:10};}
 function startCombat(weapon='sword'){t.newRun();t.equipWeapon(weapon);Object.assign(g.player,{x:400,y:320,dir:0,inv:100});g.room.enemies=[];g.room.objects=[];}
 
+// Cheat input is case-insensitive, reversible and scoped to a single attempt.
+t.newRun();
+const typeCode=word=>{for(const key of word)handlers.keydown({key,preventDefault(){}});t.keys.clear();};
+typeCode('Malakat');assert.equal(g.cheat,true);g.player.inv=0;const cheatHp=g.player.hp;t.hurt(999);assert.equal(g.player.hp,cheatHp);
+enterType('fight');g.transition=0;const oldRoom=g.room,nextRoom=g.rooms.find(r=>t.g.connected(oldRoom,r));
+const exit=t.C.doorBetween(oldRoom,nextRoom);Object.assign(g.player,{x:exit.x-exit.dx*4,y:exit.y-exit.dy*4});
+t.tryExit(exit.dx,exit.dy);assert.equal(g.room,nextRoom,'cheat exits combat without clearing enemies');assert.equal(oldRoom.clear,false);
+typeCode('MALAKAT');assert.equal(g.cheat,false);g.player.inv=0;g.player.dash=0;t.hurt(1);assert.equal(g.player.hp,cheatHp-1);
+typeCode('malakat');t.newRun();assert.equal(g.cheat,false,'new attempt resets cheat');
+assert.equal(t.musicTheme(),'exploration');enterType('fight');assert.equal(t.musicTheme(),'battle');g.room.clear=true;assert.equal(t.musicTheme(),'exploration');enterType('shop');assert.equal(t.musicTheme(),'shop');
+console.log('PASS: Malakat invincibility, combat exits, toggle/reset and contextual music routing.');
+
 // Every floor is connected, with a reachable key before its locked boss.
 for(let level=0;level<3;level++){
-  t.newRun();t.loadFloor(level);assert.ok(level===2?g.rooms.length===3:level===0?g.rooms.length>=11&&g.rooms.length<=13:g.rooms.length>=18&&g.rooms.length<=22);
+  t.newRun();t.loadFloor(level);const units=g.rooms.reduce((sum,r)=>sum+r.units,0);assert.ok(level===2?g.rooms.length===3:level===0?units>=11&&units<=13:units>=18&&units<=22);
   const visited=new Set([0]),queue=[g.rooms[0]];
   while(queue.length){const r=queue.shift();for(const n of g.rooms)if(!visited.has(n.id)&&g.connected(r,n)&&n.type!=='boss'){visited.add(n.id);queue.push(n);}}
   assert.equal(visited.size,g.rooms.length-(level===2?1:2),'all ordinary non-boss rooms reachable without the boss or secret');
@@ -34,7 +46,7 @@ t.loadFloor(2);assert.deepEqual(Array.from(g.rooms,r=>r.type),['start','ante','b
 
 // Initial-floor movement, sealed doors, persistence, key and economy.
 t.newRun();const initialY=g.player.y;press('z',10);assert.ok(g.player.y<initialY);
-function exitToward(next){const dx=next.x-g.room.x,dy=next.y-g.room.y;Object.assign(g.player,{x:dx<0?71:dx>0?889:480,y:dy<0?88:dy>0?552:320});g.transition=0;t.tryExit(dx,dy);}
+function exitToward(next){const d=t.C.doorBetween(g.room,next);Object.assign(g.player,{x:d.x-d.dx*4,y:d.y-d.dy*4});g.transition=0;t.tryExit(d.dx,d.dy);}
 const combatRoom=g.rooms.find(r=>r.type==='fight'),returnRoom=g.rooms.find(r=>g.connected(combatRoom,r)&&r.type!=='boss');t.enter(combatRoom);exitToward(returnRoom);assert.equal(g.room,combatRoom);
 killRoom();assert.ok(g.room.clear);exitToward(returnRoom);assert.equal(g.room,returnRoom);t.enter(combatRoom);assert.equal(g.room.enemies.length,0);
 enterType('treasure');Object.assign(g.player,{x:480,y:285});t.interact();assert.equal(g.mode,'choice');t.chooseReward(0);assert.equal(g.player.items.length,1);t.interact();assert.equal(g.mode,'play');
@@ -53,7 +65,7 @@ startCombat('flail');const aligned=target(615,320),offAxis=target(570,385);g.roo
 startCombat('flail');g.room.objects=[{x:490,y:290,w:45,h:60}];const behindWall=target(610,320);g.room.enemies=[behindWall];t.attack();assert.ok(g.attack.reach<100);t.updateAttack(.9);assert.equal(behindWall.hp,100);
 
 // Rendering poses define the precise collision shape, including the ball head only.
-startCombat();t.attack();const pose=t.Combat.pose(g.attack,g.player,.115);assert.equal(pose.b.x,478);assert.equal(pose.b.y,320);assert.equal(t.Combat.touches(pose,{x:483,y:320,radius:1}),false);assert.equal(t.Combat.touches(pose,{x:477,y:320,radius:1}),true);
+startCombat();t.attack();const pose=t.Combat.pose(g.attack,g.player,.115);assert.equal(pose.b.x,488);assert.equal(pose.b.y,320);assert.equal(t.Combat.touches(pose,{x:493,y:320,radius:1}),false);assert.equal(t.Combat.touches(pose,{x:487,y:320,radius:1}),true);
 startCombat('flail');t.attack();const ball=t.Combat.pose(g.attack,g.player,.45);assert.equal(t.Combat.touches(ball,{x:450,y:320,radius:10}),false,'chain itself does not hurt');
 
 // Master Sword: a ray requires full hearts; a real hold/release spins 360 degrees.
@@ -133,7 +145,7 @@ for(const weapon of ['flail','greatsword','master'])for(const blessing of ['forc
   const gear=g.player;descend();assert.equal(g.level,1);assert.equal(g.player,gear,'equipment persists between floors');assert.equal(g.player.key,0);
   enterType('boss');assert.equal(g.room.enemies[0].max,120);killRoom();standByChest();t.interact();t.chooseReward(t.C.blessings.findIndex(b=>b.id===blessing));assert.equal(g.player.blessing,blessing);descend();assert.equal(g.level,2);assert.equal(g.rooms.length,3);
   enterType('ante');Object.assign(g.player,{x:480,y:256,hp:1});t.interact();assert.equal(g.player.hp,g.player.max);
-  Object.assign(g.player,{x:480,y:80});g.transition=0;t.tryExit(0,-1);assert.equal(g.room.type,'boss','final boss needs no key');assert.equal(g.player.x,720);assert.equal(g.player.y,874);
+  Object.assign(g.player,{x:480,y:80});g.transition=0;t.tryExit(0,-1);assert.equal(g.room.type,'boss','final boss needs no key');assert.equal(g.player.x,720);assert.equal(g.player.y,856);
   const finalBoss=g.room.enemies[0],count=g.kills;assert.equal(finalBoss.hp,180);t.hit(finalBoss,10000);t.resolveDeaths();assert.equal(finalBoss.stage,2);assert.equal(finalBoss.hp,220);assert.equal(finalBoss.max,220);assert.equal(g.kills,count);assert.equal(g.room.clear,false);assert.equal(g.mode,'play');
   t.hit(finalBoss,10000);assert.equal(finalBoss.hp,220,'second phase cannot be skipped during transformation');t.renderer.draw(g);finalBoss.transform=0;t.hit(finalBoss,10000);t.resolveDeaths();assert.ok(g.room.clear);assert.equal(g.mode,'play','final treasure remains to collect');standByChest();t.interact();assert.equal(g.mode,'win');assert.ok(g.player.items.some(i=>i.id==='dawn'));
 }
@@ -153,12 +165,16 @@ startCombat();const caster=t.enemy('spitter',650,320);caster.cool=0;g.room.enemi
 startCombat();const charger=t.enemy('knight',650,320);charger.cool=0;g.room.enemies=[charger];played.length=0;tick(30);assert.deepEqual(played,[]);tick(20);assert.ok(played.includes('enemyCharge'));t.soundtrack.play=originalPlay;
 for(let level=0;level<3;level++){t.newRun();t.loadFloor(level);enterType('boss');assert.equal(t.musicTheme(),level===2?'finalBoss':'boss');g.room.clear=true;assert.notEqual(t.musicTheme(),'finalBoss');}
 // Attack previews disappear, but area warnings still render at the damage radius.
-let arcs=0,lines=0;ctx.arc=()=>arcs++;ctx.lineTo=()=>lines++;ctx.strokeRect=()=>lines++;
+let arcs=0,lines=0;const warningRadii=[];ctx.arc=(x,y,r)=>{arcs++;warningRadii.push(r);};ctx.lineTo=()=>lines++;ctx.strokeRect=()=>lines++;
 startCombat();g.room.enemies=[{...t.enemy('boss',500,200),action:'charge',windup:.4}];arcs=0;lines=0;t.renderer.warnings(g);assert.equal(arcs+lines,0);
-g.hazards=[{x:300,y:300,radius:55,delay:.9,life:.35}];t.renderer.warnings(g);assert.equal(arcs,1);
+for(const kind of ['roots','thorns','eruption','rootsweep'])for(const delay of [.9,.1,0]){
+  warningRadii.length=0;g.hazards=[{x:300,y:300,radius:55,kind,delay,warningDuration:1,life:.22}];t.renderer.warnings(g);
+  assert.equal(warningRadii.at(-1),55,'danger boundary remains at the damage radius');
+  assert.ok(warningRadii.every(r=>r>0&&r<=55),'animated rings remain inside the danger boundary');
+}
 for(const kit of kits){const poses=kit.map(action=>JSON.stringify(t.renderer.bossPose({action,windup:.2,windupMax:1,aim:.2})));assert.equal(new Set(poses).size,3,'each boss attack uses a distinct pose');}
-const drawn=[],savedRect=t.renderer.rect;t.renderer.rect=(...args)=>drawn.push(args);
-startCombat('master');t.renderer.drawWeapon(g);assert.ok(drawn.some(r=>r[0]>=50&&r[4]==='#e1fff5'),'Master Sword tip remains visible at rest');assert.ok(drawn.some(r=>r[4]==='#7164a4'),'purple guard is visible at rest');t.renderer.rect=savedRect;
+const drawn=[],shapes=[],savedRect=t.renderer.rect,savedContour=t.renderer.contour;t.renderer.rect=(...args)=>drawn.push(args);t.renderer.contour=(...args)=>shapes.push(args);
+startCombat('master');t.renderer.drawWeapon(g);assert.ok(shapes.some(r=>r[0].some(p=>p[0]===82)&&r[1]==='#e5fff8'),'longer Master Sword tip remains visible at rest');assert.ok(drawn.some(r=>r[4]==='#7764a2'),'purple guard is visible at rest');assert.ok(drawn.some(r=>r[0]>=29&&r[4]==='#f2d98d'),'gold engraving is visible on the blade');t.renderer.rect=savedRect;t.renderer.contour=savedContour;
 // Walking follows actual displacement, and stops against scenery or at rest.
 startCombat();press('d',8);assert.ok(g.player.moving&&g.player.walkCycle>0);const gait=g.player.walkCycle;tick();assert.equal(g.player.moving,false);assert.equal(g.player.walkCycle,gait);
 g.room.objects=[{x:g.player.x+12,y:g.player.y-30,w:50,h:60}];press('d',4);assert.equal(g.player.moving,false);assert.equal(g.player.walkCycle,gait);
@@ -189,3 +205,35 @@ handlers.keydown(keyEvent('Backspace'));assert.equal(g.mode,'menu');assert.ok(no
 node('menu-settings').onclick();node('setting-music').onclick();assert.equal(t.soundtrack.musicEnabled,false);assert.equal(t.soundtrack.effectsEnabled,true);node('setting-music').onclick();handlers.keydown(keyEvent('Escape'));assert.equal(g.mode,'play');assert.ok(prevented>=2);
 t.pause();handlers.keydown(keyEvent('Backspace'));handlers.keydown(keyEvent('Backspace'));assert.equal(g.mode,'pause','menu restores previous pause');t.pause();
 console.log('PASS: Backspace inventory/settings, effective stats, independent audio controls and pause restoration.');
+
+// Every large-room passage uses its own wall slot, and is reversible without spawning in stone.
+for(let run=0;run<12;run++){
+  t.newRun();t.loadFloor(1);g.cheat=true;
+  for(const room of g.rooms.filter(r=>r.units>1))for(const id of room.links){
+    const next=g.rooms.find(r=>r.id===id);if(next.type==='secret')next.entranceOpen=true;
+    t.enter(room);exitToward(next);assert.equal(g.room,next);assert.ok(!t.blocked(g.player.x,g.player.y,g.player.radius));
+    exitToward(room);assert.equal(g.room,room);assert.ok(!t.blocked(g.player.x,g.player.y,g.player.radius));
+  }
+}
+t.newRun();t.loadFloor(1);t.enter(g.rooms.find(r=>r.units===4));Object.assign(g.player,{x:900,y:600});
+const view=t.renderer.camera(g);assert.equal(view.x,420);assert.equal(view.y,280);
+handlers['game:pointerdown']({pointerType:'mouse',button:0,clientX:96,clientY:64});assert.ok(Math.abs(g.player.dir)<.0001,'mouse aiming accounts for scrolling');
+const hiddenCaster=t.enemy('spitter',180,180);hiddenCaster.cool=0;g.room.enemies=[hiddenCaster];t.updateEnemies(.1);assert.equal(hiddenCaster.windup,0,'offscreen enemies do not start unseen attacks');
+console.log('PASS: large-room door slots, reverse travel, safe arrivals, camera bounds, scrolled mouse aiming and offscreen anticipation.');
+
+for(let run=0;run<20;run++){
+  t.newRun();t.loadFloor(1);
+  for(const room of g.rooms.filter(r=>r.units>1)){
+    t.enter(room);assert.equal(room.enemies.length,room.units===4?8:6);
+    if(room.units===4){assert.equal(room.width,1440);assert.equal(room.height,960);}
+    for(const o of room.objects)assert.ok(o.x>=64&&o.y>=80&&o.x+o.w<room.width-64&&o.y+o.h<room.height-80);
+    for(const e of room.enemies)assert.ok(!t.blocked(e.x,e.y,e.radius));
+  }
+  for(const room of g.rooms)room.visited=room.type!=='secret';
+  const map=t.renderer.mapLayout(g);assert.ok(!map.boxes.some(b=>b.room.type==='secret'));
+  const onEdge=(b,x,y)=>{const near=(a,b)=>Math.abs(a-b)<1e-6;return ((near(x,b.x)||near(x,b.x+b.w))&&y>=b.y&&y<=b.y+b.h)||((near(y,b.y)||near(y,b.y+b.h))&&x>=b.x&&x<=b.x+b.w);};
+  for(const b of map.boxes)assert.ok(b.x>=0&&b.y>=0&&b.x+b.w<=260&&b.y+b.h<=155);
+  for(const l of map.links){assert.ok(onEdge(l.a,l.x1,l.y1));assert.ok(onEdge(l.b,l.x2,l.y2));assert.ok(l.x1===l.x2||l.y1===l.y2);}
+  assert.equal(map.links.length,g.rooms.filter(r=>r.type!=='secret').reduce((n,r)=>n+r.links.filter(id=>g.rooms[id].type!=='secret').length,0)/2);
+}
+console.log('PASS: compact quad rooms, reduced encounters, safe scaled geometry and map links attached to room edges.');

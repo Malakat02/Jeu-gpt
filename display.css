@@ -1,4 +1,5 @@
 :root{--ui-scale:1}
+#game{image-rendering:auto}
 .canvas-wrap{container-type:inline-size}
 /* Scale from the actual game surface, including fullscreen letterboxing. */
 body .touch-status .mobile-hearts,body.touch-device .touch-status .mobile-hearts{font-size:calc(clamp(16px,2.6cqw,40px)*var(--ui-scale));gap:calc(3px*var(--ui-scale));line-height:1.15}
